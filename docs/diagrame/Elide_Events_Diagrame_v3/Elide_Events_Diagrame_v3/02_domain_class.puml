@@ -1,0 +1,192 @@
+@startuml ElideEvents_Domain
+title Elide Events – Diagrama de clase a domeniului
+skinparam shadowing false
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam ArrowColor #526779
+skinparam class {
+  BorderColor #42617D
+  BackgroundColor #FFFFFF
+}
+
+package "Conturi și roluri" <<Rectangle>> #E3EAF4 {
+  abstract class Utilizator {
+    +id : UUID
+    +nume : String
+    +email : String
+    +parolaHash : String
+    +emailConfirmat : Boolean
+    +activ : Boolean
+    +creatLa : Instant
+  }
+  class Participant {
+  }
+  class Organizator {
+    +statusAprobare : StatusAprobare
+  }
+  class Administrator {
+  }
+}
+
+package "Evenimente" <<Rectangle>> #FDF0DA {
+  class Eveniment {
+    +id : UUID
+    +titlu : String
+    +descriere : Text
+    +inceput : Instant
+    +sfarsit : Instant
+    +vizibilitate : Vizibilitate
+    +stare : StareEveniment
+  }
+  class CategorieBilet {
+    +id : UUID
+    +denumire : String
+    +pret : Decimal
+    +moneda : String
+    +capacitate : Integer
+  }
+}
+
+package "Locații și Seat Map" <<Rectangle>> #E4F1E4 {
+  class Locatie {
+    +id : UUID
+    +denumire : String
+    +adresa : String
+    +oras : String
+    +latitudine : Decimal [0..1]
+    +longitudine : Decimal [0..1]
+    +mapsPlaceId : String [0..1]
+  }
+  class Sala {
+    +id : UUID
+    +denumire : String
+    +configurareSeatMap : JSON [0..1]
+  }
+  class Loc {
+    +id : UUID
+    +rand : String
+    +numar : Integer
+    +pozitieX : Integer
+    +pozitieY : Integer
+  }
+}
+
+package "Rezervare, plată, bilet" <<Rectangle>> #FBE6E1 {
+  class Rezervare {
+    +id : UUID
+    +creataLa : Instant
+    +expiraLa : Instant
+    +stare : StareRezervare
+    +total : Decimal
+  }
+  class RezervareItem {
+    +id : UUID
+    +cantitate : Integer
+    +pretUnitar : Decimal
+    +blocheazaInventar : Boolean
+  }
+  class Plata {
+    +id : UUID
+    +furnizor : String
+    +referintaTranzactie : String
+    +suma : Decimal
+    +moneda : String
+    +stare : StarePlata
+    +creataLa : Instant
+  }
+  class Bilet {
+    +id : UUID
+    +codQR : String
+    +stare : StareBilet
+    +emisLa : Instant
+    +utilizatLa : Instant [0..1]
+  }
+}
+
+package "Extensie SaaS opțională (neconfirmată)" <<Rectangle>> #EDEDED {
+  class AbonamentOrganizator {
+    +id : UUID
+    +plan : PlanAbonament
+    +inceput : Instant
+    +sfarsit : Instant
+  }
+}
+
+enum StatusAprobare {
+  IN_ASTEPTARE
+  APROBAT
+  RESPINS
+}
+enum Vizibilitate {
+  PUBLIC
+  PRIVAT
+}
+enum StareEveniment {
+  CIORNA
+  PUBLICAT
+  ANULAT
+  FINALIZAT
+}
+enum StareRezervare {
+  ACTIVA
+  PLATITA
+  EXPIRATA
+  ANULATA
+}
+enum StarePlata {
+  INITIATA
+  IN_PROCESARE
+  CONFIRMATA
+  ESUATA
+  RAMBURSATA
+}
+enum StareBilet {
+  EMIS
+  UTILIZAT
+  ANULAT
+}
+enum PlanAbonament {
+  GRATUIT
+  PRO
+}
+
+Utilizator <|-- Participant
+Utilizator <|-- Organizator
+Utilizator <|-- Administrator
+Administrator ..> Organizator : aprobă
+Organizator "1" -- "0..*" Eveniment : organizează
+Locatie "1" -- "0..*" Eveniment : găzduiește
+Locatie "1" *-- "0..*" Sala : conține
+Sala "1" *-- "0..*" Loc : conține
+Sala "0..1" -- "0..*" Eveniment : folosită de (opțional)
+Eveniment "1" *-- "0..*" CategorieBilet : definește
+Participant "1" -- "0..*" Rezervare : face
+Eveniment "1" -- "0..*" Rezervare : primește
+Rezervare "1" *-- "1..*" RezervareItem : conține
+CategorieBilet "1" -- "0..*" RezervareItem : selectată în
+Loc "0..1" -- "0..*" RezervareItem : alocat (opțional)
+Rezervare "1" -- "0..*" Plata : are încercări de plată
+RezervareItem "1" -- "0..*" Bilet : generează după plată confirmată
+Organizator "1" .. "0..*" AbonamentOrganizator : are (extensie)
+
+note bottom of Utilizator
+Model conceptual (moștenire). În PostgreSQL: tabelă utilizator + tabele pe subtip (PK = FK),
+fără duplicarea datelor de autentificare; parola se păstrează doar ca hash.
+end note
+note bottom of Loc
+Fără asociere permanentă Loc–CategorieBilet: categoria aparține evenimentului,
+iar locul este alocat opțional unui RezervareItem (apoi biletului emis).
+Starea locului (liber / rezervat temporar / vândut) este derivată din RezervareItem.
+end note
+note bottom of Plata
+Stările plății sunt o propunere tehnică. RAMBURSATA este extensie neconfirmată
+(nu există funcționalitate de rambursare în documentație).
+end note
+note bottom of AbonamentOrganizator
+Extensie SaaS opțională: planul Gratuit/Pro și limitele sunt valori ilustrative;
+plata abonamentului este separată de plata biletelor.
+end note
+@enduml

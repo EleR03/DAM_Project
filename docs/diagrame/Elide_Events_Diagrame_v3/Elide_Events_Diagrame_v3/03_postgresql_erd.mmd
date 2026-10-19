@@ -1,0 +1,126 @@
+%% Elide Events – ERD PostgreSQL. Constrângerile UNIQUE/CHECK/FK compuse sunt în notele de proiectare (Mermaid nu le execută).
+erDiagram
+    UTILIZATOR {
+        uuid id PK
+        varchar(100) nume
+        varchar(255) email UK
+        varchar(255) parola_hash
+        varchar(15) tip_utilizator
+        boolean email_confirmat
+        boolean activ
+        timestamptz creat_la
+    }
+    PARTICIPANT {
+        uuid utilizator_id PK, FK
+    }
+    ORGANIZATOR {
+        uuid utilizator_id PK, FK
+        varchar(20) status_aprobare
+    }
+    ADMINISTRATOR {
+        uuid utilizator_id PK, FK
+    }
+    LOCATIE {
+        uuid id PK
+        varchar(150) denumire
+        varchar(255) adresa
+        varchar(100) oras
+        numeric_9_6 latitudine
+        numeric_9_6 longitudine
+        varchar(255) maps_place_id
+    }
+    SALA {
+        uuid id PK
+        uuid locatie_id FK
+        varchar(100) denumire
+        jsonb seat_map_config
+    }
+    LOC {
+        uuid id PK
+        uuid sala_id FK
+        varchar(10) rand
+        integer numar
+        integer pozitie_x
+        integer pozitie_y
+    }
+    EVENIMENT {
+        uuid id PK
+        uuid organizator_id FK
+        uuid locatie_id FK
+        uuid sala_id FK
+        varchar(200) titlu
+        text descriere
+        timestamptz inceput
+        timestamptz sfarsit
+        varchar(10) vizibilitate
+        varchar(20) stare
+    }
+    CATEGORIE_BILET {
+        uuid id PK
+        uuid eveniment_id FK
+        varchar(100) denumire
+        numeric_10_2 pret
+        char(3) moneda
+        integer capacitate
+    }
+    REZERVARE {
+        uuid id PK
+        uuid participant_id FK
+        uuid eveniment_id FK
+        timestamptz creata_la
+        timestamptz expira_la
+        varchar(20) stare
+        numeric_10_2 total
+    }
+    REZERVARE_ITEM {
+        uuid id PK
+        uuid rezervare_id FK
+        uuid eveniment_id FK
+        uuid categorie_bilet_id FK
+        uuid loc_id FK
+        integer cantitate
+        numeric_10_2 pret_unitar
+        boolean blocheaza_inventar
+    }
+    PLATA {
+        uuid id PK
+        uuid rezervare_id FK
+        varchar(20) furnizor
+        varchar(255) referinta_tranzactie
+        numeric_10_2 suma
+        char(3) moneda
+        varchar(20) stare
+        timestamptz creata_la
+    }
+    BILET {
+        uuid id PK
+        uuid rezervare_item_id FK
+        varchar(64) cod_qr UK
+        varchar(20) stare
+        timestamptz emis_la
+        timestamptz utilizat_la
+    }
+    ABONAMENT_ORGANIZATOR {
+        uuid id PK
+        uuid organizator_id FK
+        varchar(20) plan
+        timestamptz inceput
+        timestamptz sfarsit
+    }
+    UTILIZATOR ||--o| PARTICIPANT : "specializare"
+    UTILIZATOR ||--o| ORGANIZATOR : "specializare"
+    UTILIZATOR ||--o| ADMINISTRATOR : "specializare"
+    ORGANIZATOR ||--o{ EVENIMENT : "organizează"
+    PARTICIPANT ||--o{ REZERVARE : "face"
+    LOCATIE ||--o{ EVENIMENT : "găzduiește"
+    LOCATIE ||--o{ SALA : "conține"
+    SALA |o--o{ EVENIMENT : "folosită (opțional)"
+    SALA ||--o{ LOC : "conține"
+    EVENIMENT ||--o{ CATEGORIE_BILET : "definește"
+    EVENIMENT ||--o{ REZERVARE : "primește"
+    REZERVARE ||--|{ REZERVARE_ITEM : "conține"
+    CATEGORIE_BILET ||--o{ REZERVARE_ITEM : "selectată în"
+    LOC |o--o{ REZERVARE_ITEM : "alocat (opțional)"
+    REZERVARE ||--o{ PLATA : "are încercări"
+    REZERVARE_ITEM ||--o{ BILET : "generează"
+    ORGANIZATOR ||--o{ ABONAMENT_ORGANIZATOR : "are (extensie)"

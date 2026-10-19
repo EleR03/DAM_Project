@@ -1,0 +1,172 @@
+@startuml ElideEvents_ERD
+title Elide Events – Diagrama bazei de date (PostgreSQL)
+hide circle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ArrowColor #526779
+skinparam entity {
+  BorderColor #42617D
+}
+
+entity "utilizator" as utilizator #E3EAF4 {
+  * id : UUID <<PK>>
+  --
+  nume : VARCHAR(100)
+  email : VARCHAR(255) <<UK>>
+  parola_hash : VARCHAR(255)
+  tip_utilizator : VARCHAR(15)
+  email_confirmat : BOOLEAN
+  activ : BOOLEAN
+  creat_la : TIMESTAMPTZ
+}
+entity "participant" as participant #E3EAF4 {
+  * utilizator_id : UUID <<PK/FK>>
+  --
+}
+entity "organizator" as organizator #E3EAF4 {
+  * utilizator_id : UUID <<PK/FK>>
+  --
+  status_aprobare : VARCHAR(20)
+}
+entity "administrator" as administrator #E3EAF4 {
+  * utilizator_id : UUID <<PK/FK>>
+  --
+}
+entity "locatie" as locatie #E4F1E4 {
+  * id : UUID <<PK>>
+  --
+  denumire : VARCHAR(150)
+  adresa : VARCHAR(255)
+  oras : VARCHAR(100)
+  latitudine : NUMERIC(9,6)
+  longitudine : NUMERIC(9,6)
+  maps_place_id : VARCHAR(255)
+}
+entity "sala" as sala #E4F1E4 {
+  * id : UUID <<PK>>
+  --
+  locatie_id : UUID <<FK>>
+  denumire : VARCHAR(100)
+  seat_map_config : JSONB
+}
+entity "loc" as loc #E4F1E4 {
+  * id : UUID <<PK>>
+  --
+  sala_id : UUID <<FK>>
+  rand : VARCHAR(10)
+  numar : INTEGER
+  pozitie_x : INTEGER
+  pozitie_y : INTEGER
+}
+entity "eveniment" as eveniment #FDF0DA {
+  * id : UUID <<PK>>
+  --
+  organizator_id : UUID <<FK>>
+  locatie_id : UUID <<FK>>
+  sala_id : UUID <<FK>>
+  titlu : VARCHAR(200)
+  descriere : TEXT
+  inceput : TIMESTAMPTZ
+  sfarsit : TIMESTAMPTZ
+  vizibilitate : VARCHAR(10)
+  stare : VARCHAR(20)
+}
+entity "categorie_bilet" as categorie_bilet #FDF0DA {
+  * id : UUID <<PK>>
+  --
+  eveniment_id : UUID <<FK>>
+  denumire : VARCHAR(100)
+  pret : NUMERIC(10,2)
+  moneda : CHAR(3)
+  capacitate : INTEGER
+}
+entity "rezervare" as rezervare #FBE6E1 {
+  * id : UUID <<PK>>
+  --
+  participant_id : UUID <<FK>>
+  eveniment_id : UUID <<FK>>
+  creata_la : TIMESTAMPTZ
+  expira_la : TIMESTAMPTZ
+  stare : VARCHAR(20)
+  total : NUMERIC(10,2)
+}
+entity "rezervare_item" as rezervare_item #FBE6E1 {
+  * id : UUID <<PK>>
+  --
+  rezervare_id : UUID <<FK>>
+  eveniment_id : UUID <<FK>>
+  categorie_bilet_id : UUID <<FK>>
+  loc_id : UUID <<FK>>
+  cantitate : INTEGER
+  pret_unitar : NUMERIC(10,2)
+  blocheaza_inventar : BOOLEAN
+}
+entity "plata" as plata #FBE6E1 {
+  * id : UUID <<PK>>
+  --
+  rezervare_id : UUID <<FK>>
+  furnizor : VARCHAR(20)
+  referinta_tranzactie : VARCHAR(255)
+  suma : NUMERIC(10,2)
+  moneda : CHAR(3)
+  stare : VARCHAR(20)
+  creata_la : TIMESTAMPTZ
+}
+entity "bilet" as bilet #FBE6E1 {
+  * id : UUID <<PK>>
+  --
+  rezervare_item_id : UUID <<FK>>
+  cod_qr : VARCHAR(64) <<UK>>
+  stare : VARCHAR(20)
+  emis_la : TIMESTAMPTZ
+  utilizat_la : TIMESTAMPTZ
+}
+entity "abonament_organizator" as abonament_organizator #EDEDED {
+  * id : UUID <<PK>>
+  --
+  organizator_id : UUID <<FK>>
+  plan : VARCHAR(20)
+  inceput : TIMESTAMPTZ
+  sfarsit : TIMESTAMPTZ
+}
+
+utilizator ||--o| participant : specializare
+utilizator ||--o| organizator : specializare
+utilizator ||--o| administrator : specializare
+organizator ||--o{ eveniment : organizează
+participant ||--o{ rezervare : face
+locatie ||--o{ eveniment : găzduiește
+locatie ||--o{ sala : conține
+sala |o--o{ eveniment : folosită (opțional)
+sala ||--o{ loc : conține
+eveniment ||--o{ categorie_bilet : definește
+eveniment ||--o{ rezervare : primește
+rezervare ||--|{ rezervare_item : conține
+categorie_bilet ||--o{ rezervare_item : selectată în
+loc |o--o{ rezervare_item : alocat (opțional)
+rezervare ||--o{ plata : are încercări
+rezervare_item ||--o{ bilet : generează
+organizator ||--o{ abonament_organizator : are (extensie)
+
+note bottom of rezervare_item
+Constrângeri SQL: UNIQUE parțial (eveniment_id, loc_id) WHERE loc_id IS NOT NULL AND blocheaza_inventar;
+FK compuse (rezervare_id, eveniment_id) și (categorie_bilet_id, eveniment_id); CHECK cantitate > 0;
+loc_id NOT NULL => cantitate = 1. Categoria este pe item, nu pe rezervare.
+end note
+note bottom of utilizator
+UNIQUE(email); tip_utilizator = PARTICIPANT | ORGANIZATOR | ADMINISTRATOR (CHECK);
+moștenire tabelă-per-subtip: participant, organizator, administrator (PK = FK).
+end note
+note bottom of bilet
+UNIQUE(cod_qr). Biletul se emite numai după plata CONFIRMATA.
+end note
+note bottom of loc
+UNIQUE(sala_id, rand, numar). Stare loc = derivată din rezervare_item.
+end note
+note bottom of abonament_organizator
+Extensie opțională SaaS; separată de plata biletelor.
+end note
+@enduml

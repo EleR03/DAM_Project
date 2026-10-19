@@ -1,0 +1,31 @@
+@startuml ElideEvents_C4_Container
+!include <C4/C4_Container>
+LAYOUT_TOP_DOWN()
+title Elide Events – C4 nivel 2: Containere
+
+Person(client, "Participant", "Rezervă și plătește bilete")
+Person(org, "Organizator", "Gestionează evenimente și rapoarte")
+Person(admin, "Administrator", "Aprobă organizatori, gestionează utilizatori")
+Person(staff, "Personal de intrare", "Validează biletele QR")
+
+System_Boundary(elide, "Elide Events") {
+  Container(web, "Aplicație web (SPA)", "React", "Listă evenimente, selector Seat Map, checkout, hartă, panouri pentru organizator și administrator")
+  Container(api, "API REST", "Java, Spring Boot", "Autentificare și roluri, evenimente, rezervări cu expirare la 10 min, plăți, emitere bilete QR, validare QR, rapoarte")
+  ContainerDb(db, "Bază de date", "PostgreSQL", "Utilizatori, evenimente, locații, săli, locuri, rezervări, plăți, bilete. Tranzacții ACID")
+}
+
+System_Ext(pay, "Procesator de plăți", "Stripe / Netopia (sandbox)")
+System_Ext(mail, "Serviciu email", "SendGrid / SMTP")
+System_Ext(maps, "Google Maps", "Maps JavaScript API, Geocoding API")
+
+Rel(client, web, "Folosește", "HTTPS")
+Rel(org, web, "Folosește", "HTTPS")
+Rel(admin, web, "Folosește", "HTTPS")
+Rel(staff, web, "Folosește", "HTTPS")
+Rel(web, api, "Apeluri API", "JSON / HTTPS (REST)")
+Rel(api, db, "Citește și scrie", "SQL / JDBC")
+Rel(api, pay, "Creează sesiunea de plată; primește confirmarea", "HTTPS API / webhook")
+Rel(api, mail, "Trimite confirmări și bilete", "HTTPS API / SMTP")
+Rel(web, maps, "Afișează harta", "Maps JavaScript API")
+Rel(api, maps, "Geocodează adresa", "Geocoding API, HTTPS")
+@enduml

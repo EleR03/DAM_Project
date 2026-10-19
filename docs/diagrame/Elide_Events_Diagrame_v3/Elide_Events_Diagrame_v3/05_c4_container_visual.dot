@@ -1,0 +1,27 @@
+digraph G { graph [bgcolor=white, pad=0.35, nodesep=0.8, ranksep=1.5, splines=true, fontname="DejaVu Sans", labelloc=t, fontsize=24, label="Elide Events – C4 nivel 2: Containere"];
+ node [fontname="DejaVu Sans", fontsize=14]; edge [fontname="DejaVu Sans", fontsize=11, color="#555555", fontcolor="#333333", arrowsize=0.9, penwidth=1.3];
+client [shape=box, style="filled,rounded", fillcolor="#08427B", color="#08427B", fontcolor="white", margin="0.25,0.18", label=<<B>Participant</B><BR/><BR/><FONT POINT-SIZE="11">Rezervă și plătește bilete</FONT>>];
+org [shape=box, style="filled,rounded", fillcolor="#08427B", color="#08427B", fontcolor="white", margin="0.25,0.18", label=<<B>Organizator</B><BR/><BR/><FONT POINT-SIZE="11">Gestionează evenimente<BR/>și rapoarte</FONT>>];
+admin [shape=box, style="filled,rounded", fillcolor="#08427B", color="#08427B", fontcolor="white", margin="0.25,0.18", label=<<B>Administrator</B><BR/><BR/><FONT POINT-SIZE="11">Aprobă organizatori,<BR/>gestionează utilizatori</FONT>>];
+staff [shape=box, style="filled,rounded", fillcolor="#08427B", color="#08427B", fontcolor="white", margin="0.25,0.18", label=<<B>Personal de intrare</B><BR/><BR/><FONT POINT-SIZE="11">Validează biletele QR</FONT>>];
+subgraph cluster_sys { label=<<B>Elide Events</B> [sistem]>; fontsize=16; style="dashed,rounded"; color="#666666"; margin=24;
+web [shape=box, style="filled,rounded", fillcolor="#438DD5", color="#438DD5", fontcolor="white", margin="0.25,0.18", label=<<B>Aplicație web (SPA)</B><BR/><FONT POINT-SIZE="10">[React]</FONT><BR/><BR/><FONT POINT-SIZE="11">Listă evenimente, selector Seat Map,<BR/>checkout, hartă, panouri pentru<BR/>organizator și administrator</FONT>>];
+api [shape=box, style="filled,rounded", fillcolor="#438DD5", color="#438DD5", fontcolor="white", margin="0.25,0.18", label=<<B>API REST</B><BR/><FONT POINT-SIZE="10">[Java, Spring Boot]</FONT><BR/><BR/><FONT POINT-SIZE="11">Autentificare și roluri, evenimente,<BR/>rezervări cu expirare la 10 min,<BR/>plăți, emitere bilete QR,<BR/>validare QR, rapoarte</FONT>>];
+db [shape=cylinder, style="filled,rounded", fillcolor="#438DD5", color="#438DD5", fontcolor="white", margin="0.25,0.18", label=<<B>Bază de date</B><BR/><FONT POINT-SIZE="10">[PostgreSQL]</FONT><BR/><BR/><FONT POINT-SIZE="11">Utilizatori, evenimente, locații, săli,<BR/>locuri, rezervări, plăți, bilete.<BR/>Tranzacții ACID</FONT>>];
+}
+pay [shape=box, style="filled,rounded", fillcolor="#8A8A8A", color="#8A8A8A", fontcolor="white", margin="0.25,0.18", label=<<B>Procesator de plăți</B><BR/><FONT POINT-SIZE="10">[Stripe / Netopia, sandbox]</FONT><BR/><BR/><FONT POINT-SIZE="11">Plăți cu cardul</FONT>>];
+mail [shape=box, style="filled,rounded", fillcolor="#8A8A8A", color="#8A8A8A", fontcolor="white", margin="0.25,0.18", label=<<B>Serviciu email</B><BR/><FONT POINT-SIZE="10">[SendGrid / SMTP]</FONT><BR/><BR/><FONT POINT-SIZE="11">Emailuri de confirmare<BR/>și bilete</FONT>>];
+maps [shape=box, style="filled,rounded", fillcolor="#8A8A8A", color="#8A8A8A", fontcolor="white", margin="0.25,0.18", label=<<B>Google Maps</B><BR/><BR/><FONT POINT-SIZE="11">Maps JavaScript API,<BR/>Geocoding API</FONT>>];
+client -> web [label=<<B>Folosește</B><BR/><FONT POINT-SIZE="10"><I>[HTTPS]</I></FONT>>];
+org -> web [label=<<B>Folosește</B><BR/><FONT POINT-SIZE="10"><I>[HTTPS]</I></FONT>>];
+admin -> web [label=<<B>Folosește</B><BR/><FONT POINT-SIZE="10"><I>[HTTPS]</I></FONT>>];
+staff -> web [label=<<B>Folosește</B><BR/><FONT POINT-SIZE="10"><I>[HTTPS]</I></FONT>>];
+web -> api [label=<<B>Apeluri API</B><BR/><FONT POINT-SIZE="10"><I>[JSON / HTTPS (REST)]</I></FONT>>];
+api -> db [label=<<B>Citește și scrie</B><BR/><FONT POINT-SIZE="10"><I>[SQL / JDBC]</I></FONT>>];
+api -> pay [label=<<B>Creează sesiunea de plată; primește confirmarea</B><BR/><FONT POINT-SIZE="10"><I>[HTTPS API / webhook]</I></FONT>>];
+api -> mail [label=<<B>Trimite confirmări și bilete</B><BR/><FONT POINT-SIZE="10"><I>[HTTPS API / SMTP]</I></FONT>>];
+web -> maps [label=<<B>Afișează harta</B><BR/><FONT POINT-SIZE="10"><I>[Maps JavaScript API]</I></FONT>>];
+api -> maps [label=<<B>Geocodează adresa</B><BR/><FONT POINT-SIZE="10"><I>[Geocoding API, HTTPS]</I></FONT>>];
+{rank=same; client; org; admin; staff}
+{rank=same; pay; mail; maps}
+}

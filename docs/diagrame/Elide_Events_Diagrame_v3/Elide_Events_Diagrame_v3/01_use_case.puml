@@ -1,0 +1,135 @@
+@startuml ElideEvents_UseCase
+title Elide Events – Diagrama cazurilor de utilizare
+left to right direction
+skinparam shadowing false
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam packageStyle rectangle
+skinparam ArrowColor #526779
+skinparam usecase {
+  BackgroundColor #F4F7FB
+  BorderColor #42617D
+}
+skinparam rectangle {
+  BorderColor #31516B
+  BackgroundColor #FFFFFF
+}
+
+' ---- Actori umani (în afara limitei sistemului)
+actor "Participant" as Client
+actor "Organizator" as Org
+actor "Administrator" as Admin
+actor "Personal de intrare" as Staff
+
+' ---- Sisteme externe
+actor "Procesator de plăți\n(Stripe / Netopia, sandbox)" as Pay <<sistem extern>>
+actor "Serviciu email\n(SendGrid / SMTP)" as Mail <<sistem extern>>
+actor "Google Maps" as Maps <<sistem extern>>
+
+rectangle "Elide Events" {
+
+  package "Cont și descoperire" {
+    usecase "Înregistrare" as UC_Reg
+    usecase "Autentificare" as UC_Login
+    usecase "Căutare evenimente\npublicate" as UC_Search
+    usecase "Vizualizare detalii\neveniment" as UC_Detail
+    usecase "Afișare locație\npe hartă" as UC_Map
+  }
+
+  package "Rezervare și plată" {
+    usecase "Rezervare bilete" as UC_Res
+    usecase "Selectare loc\nîn Seat Map" as UC_Seat
+    usecase "Plată rezervare" as UC_Pay
+    usecase "Procesare plată\nprin procesator" as UC_Proc
+    usecase "Tratare plată\neșuată" as UC_Fail
+    usecase "Emitere bilete\ncu cod QR" as UC_Issue
+    usecase "Trimitere email\n(cont / bilete)" as UC_Mail
+    usecase "Vizualizare bilete" as UC_MyTk
+  }
+
+  package "Administrare evenimente" {
+    usecase "Creare / editare /\nștergere eveniment" as UC_Crud
+    usecase "Geocodare adresă" as UC_Geo
+    usecase "Gestionare categorii\nde bilete" as UC_Cat
+    usecase "Configurare Seat Map\n(opțional)" as UC_SeatCfg
+    usecase "Publicare eveniment" as UC_Pub
+    usecase "Vizualizare rapoarte\nși statistici" as UC_Rep
+  }
+
+  package "Administrare platformă și validare QR" {
+    usecase "Aprobare organizator" as UC_Appr
+    usecase "Gestionare utilizatori\nși permisiuni" as UC_Usr
+    usecase "Monitorizare platformă" as UC_Mon
+    usecase "Validare bilet\nprin cod QR" as UC_Val
+    usecase "Refuzare bilet invalid\nsau deja utilizat" as UC_Ref
+  }
+
+  package "Extensie SaaS opțională (propunere, neconfirmată)" #F2F2F2 {
+    usecase "Activare abonament\norganizator" as UC_Sub #E6E6E6
+    usecase "Procesare plată\nabonament" as UC_SubPay #E6E6E6
+  }
+}
+
+' ---- Asocieri actori – use case-uri
+Client --> UC_Reg
+Client --> UC_Login
+Client --> UC_Search
+Client --> UC_Detail
+Client --> UC_Res
+Client --> UC_Pay
+Client --> UC_MyTk
+Org --> UC_Login
+Org --> UC_Crud
+Org --> UC_Cat
+Org --> UC_SeatCfg
+Org --> UC_Pub
+Org --> UC_Rep
+Org --> UC_Sub
+Admin --> UC_Login
+Admin --> UC_Appr
+Admin --> UC_Usr
+Admin --> UC_Mon
+Staff --> UC_Val
+UC_Proc -- Pay
+UC_SubPay -- Pay
+UC_Mail -- Mail
+UC_Map -- Maps
+UC_Geo -- Maps
+
+' ---- include: spre use case-ul inclus (comportament obligatoriu)
+UC_Detail ..> UC_Map : <<include>>
+UC_Reg ..> UC_Mail : <<include>>
+UC_Pay ..> UC_Proc : <<include>>
+UC_Issue ..> UC_Mail : <<include>>
+UC_Crud ..> UC_Geo : <<include>>
+UC_Sub ..> UC_SubPay : <<include>>
+
+' ---- extend: de la extensie spre use case-ul de bază (comportament condițional)
+UC_Seat ..> UC_Res : <<extend>>
+UC_Issue ..> UC_Pay : <<extend>>
+UC_Fail ..> UC_Pay : <<extend>>
+UC_Ref ..> UC_Val : <<extend>>
+
+note bottom of UC_Seat
+Condiție extend: eveniment cu locuri numerotate (Seat Map).
+end note
+note bottom of UC_Issue
+Condiție extend: plata a fost confirmată de procesator.
+Biletul nu se emite înainte de confirmare; emailul este o notificare ulterioară emiterii.
+end note
+note bottom of UC_Fail
+Condiție extend: plata a fost respinsă; nu se emit bilete, locurile se eliberează.
+end note
+note bottom of UC_Ref
+Condiție extend: cod QR invalid sau bilet deja utilizat.
+end note
+note right of UC_Res
+Rezervarea blochează temporar inventarul 10 minute.
+Expirarea este comportament automat al sistemului (nu o acțiune a unui actor):
+la expirare locurile se eliberează.
+end note
+note right of UC_Pub
+Precondiție: organizator aprobat.
+end note
+@enduml

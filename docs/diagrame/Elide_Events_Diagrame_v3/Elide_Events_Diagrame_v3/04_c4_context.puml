@@ -1,0 +1,30 @@
+@startuml ElideEvents_C4_Context
+' Folosește biblioteca standard C4-PlantUML inclusă în PlantUML (!include <C4/...>)
+!include <C4/C4_Context>
+LAYOUT_TOP_DOWN()
+title Elide Events – C4 nivel 1: Context (sistem)
+
+Person(client, "Participant", "Caută evenimente, rezervă și plătește bilete, primește biletul cu cod QR")
+Person(org, "Organizator", "Creează evenimente, categorii de bilete și Seat Map; vede rapoarte de vânzări")
+Person(admin, "Administrator", "Aprobă organizatori, gestionează utilizatori, monitorizează platforma")
+Person(staff, "Personal de intrare", "Validează biletele prin scanarea codului QR")
+
+System(elide, "Elide Events", "Platformă SaaS de ticketing și management de evenimente")
+
+System_Ext(pay, "Procesator de plăți", "Stripe / Netopia (sandbox): procesează plățile cu cardul și confirmă tranzacția")
+System_Ext(mail, "Serviciu email", "SendGrid / SMTP: confirmări de cont și bilete cu cod QR")
+System_Ext(maps, "Google Maps", "Afișare hartă și geocodare (adresă în coordonate)")
+
+Rel(client, elide, "Caută, rezervă și plătește bilete", "HTTPS")
+Rel(org, elide, "Gestionează evenimente și rapoarte", "HTTPS")
+Rel(admin, elide, "Administrează platforma", "HTTPS")
+Rel(staff, elide, "Validează coduri QR", "HTTPS")
+Rel(elide, pay, "Inițiază plata; primește confirmarea", "HTTPS API / webhook")
+Rel(elide, mail, "Trimite emailuri", "HTTPS API / SMTP")
+Rel(elide, maps, "Afișează harta; geocodează adrese", "HTTPS API")
+
+note right of elide
+Procesatorul gestionează efectiv plata; Elide Events păstrează doar
+referința și starea tranzacției necesare fluxului.
+end note
+@enduml
