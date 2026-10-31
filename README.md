@@ -23,9 +23,9 @@ Problema pe care o rezolvă aplicația este lipsa unei platforme centralizate pe
 
 | Rol | Membru |
 | :--- | :--- |
-| **Product Owner și Business Analyst** | Rusu Elena |
+| **Product Owner și Business Analyst** | Crudu Ioana-Andreea |
 | **Tech Lead și Architect** | Vornicu Denisa-Ștefania |
-| **Developer și QA Tester** | Crudu Ioana-Andreea |
+| **Developer și QA Tester** |  Rusu Elena |
 
 ---
 
@@ -42,26 +42,38 @@ Problema pe care o rezolvă aplicația este lipsa unei platforme centralizate pe
 ## 4. User Stories (Gherkin)
 
 ### Epic 1 – Autentificare și conturi
-* **US 1.1 – Înregistrarea unui client**
-  * *Scenario: Înregistrare reușită*
-    * **Given** că sunt un vizitator fără cont
-    * **When** completez datele necesare și trimit formularul
-    * **Then** contul meu este creat
-    * **And** primesc un email de confirmare
-* **US 1.2 – Autentificarea utilizatorului**
-  * *Scenario: Autentificare reușită*
-    * **Given** că am un cont existent
-    * **When** introduc datele de autentificare corecte
-    * **Then** sunt autentificat în aplicație
-  * *Scenario: Autentificare eșuată*
-    * **Given** că am un cont existent
-    * **When** introduc o parolă incorectă
-    * **Then** sistemul afișează un mesaj de eroare
-* **US 1.3 – Deconectarea utilizatorului**
-  * *Scenario: Deconectare*
-    * **Given** că sunt autentificat în aplicație
-    * **When** aleg opțiunea de deconectare
-    * **Then** sesiunea mea este încheiată
+* **US 1.1 – Înregistrarea unui participant
+• Scenario: Înregistrare reușită
+    ◦ Given că sunt un vizitator fără cont
+    ◦ When completez datele necesare și trimit formularul
+    ◦ Then contul meu este creat cu rolul PARTICIPANT și statusul ACTIVE
+    ◦ And primesc un email de confirmare
+  
+US 1.2 – Autentificarea
+• Scenario: Autentificare reușită
+    ◦ Given că am un cont cu statusul ACTIVE
+    ◦ When introduc datele corecte
+    ◦ Then sunt autentificat (access token + refresh token)
+• Scenario: Autentificare eșuată
+    ◦ Given că am un cont existent
+    ◦ When introduc o parolă incorectă
+    ◦ Then sistemul afișează un mesaj de eroare
+• Scenario: Cont suspendat
+    ◦ Given că contul meu are statusul SUSPENDED
+    ◦ When încerc să mă autentific
+    ◦ Then accesul îmi este refuzat
+    
+US 1.3 – Deconectarea
+• Scenario: Deconectare
+    ◦ Given că sunt autentificat
+    ◦ When aleg deconectarea
+    ◦ Then refresh token-ul meu este invalidat și sesiunea se încheie
+    
+US 1.4 – Controlul accesului pe rol (RBAC)
+• Scenario: Acces interzis
+    ◦ Given că sunt autentificat ca participant
+    ◦ When apelez o operație de organizator sau de administrator
+    ◦ Then serverul răspunde 403 și operația nu se execută
 
 ### Epic 2 – Gestionarea evenimentelor
 * **US 2.1 – Crearea unui eveniment**
@@ -69,16 +81,27 @@ Problema pe care o rezolvă aplicația este lipsa unei platforme centralizate pe
     * **Given** că sunt autentificat ca organizator aprobat
     * **When** completez informațiile necesare și salvez evenimentul
     * **Then** evenimentul este creat în sistem
+• Scenario: Organizator neactiv
+    ◦ Given că contul meu de organizator nu este ACTIVE
+    ◦ When încerc să creez un eveniment
+    ◦ Then sistemul refuză operația
+      
 * **US 2.2 – Publicarea unui eveniment**
   * *Scenario: Publicarea unui eveniment*
     * **Given** că am creat un eveniment cu informațiile necesare
     * **When** public evenimentul
     * **Then** evenimentul apare în lista publică
+• Scenario: Modificare după publicare
+    ◦ Given că evenimentul este PUBLISHED și are locuri vândute sau blocate temporar
+    ◦ When încerc să-i schimb data
+    ◦ Then sistemul refuză modificarea
+      
 * **US 2.3 – Căutarea evenimentelor**
   * *Scenario: Căutarea evenimentelor*
     * **Given** că există evenimente publicate
     * **When** caut evenimente după oraș sau dată
     * **Then** sunt afișate evenimentele care corespund criteriilor
+      
 * **US 2.4 – Localizarea evenimentului pe hartă**
   * *Scenario: Afișare hartă locație*
     * **Given** că accesez detaliile unui eveniment publicat
@@ -208,59 +231,38 @@ Trello va facilita distribuirea responsabilităților, urmărirea progresului ș
 ---
 
 ## 8. Diagrama Use Case
-* **Actori:**
-  - *Participant/Client;*
-  - *Organizatorul evenimentului;*
-  - *Administratorul platformei;*
-* **Sistemul:** Elide Events, format din aplicația web React și un API REST Spring Boot care folosește o bază de date PostgreSQL.
-* **Sisteme externe:**
-  - *Procesator de plăți (Stripe în Test Mode):* Procesează plățile cu cardul și confirmă tranzacțiile.
-  - *Serviciu de email (SendGrid):* Trimite confirmări de cont, biletele cu cod QR și notificările de anulare.
-  - *Google Maps Platform:* Utilizat pentru serviciul de geocodare (Geocoding API), transformând adresele introduse de organizatori în coordonate geografice (latitudine și longitudine).
-  - *OpenStreetMap (cu MapLibre GL JS):* Utilizat pentru furnizarea datelor și a stilului de hartă interactivă în aplicația web, permițând afișarea vizuală a locației evenimentului și a markerelor.
+Actori: Participant, Organizator, Administrator. Validarea biletelor la intrare o face organizatorul (permisiunea TICKET_VALIDATE); nu există un actor separat „Personal de intrare”.
+Sisteme externe: Stripe (plăți bilete, în Test Mode, și abonamente prin Stripe Billing, cu webhook-uri); SendGrid (emailuri); Google Maps Platform (Maps JavaScript API pentru hartă, Places Autocomplete pentru alegerea locației, Geocoding API pentru adresă → coordonate). OpenStreetMap/MapLibre nu mai este folosit, iar Netopia nu face parte din proiect.
+Fluxul participantului: cont (confirmat prin email), autentificare, căutare, detalii eveniment cu harta locației, Selectare locuri pe harta sălii și blocarea lor 10 minute, comandă, plată Stripe, apoi emiterea biletelor cu QR și trimiterea lor pe email.
+Relații:
+• «include»: Vizualizare detalii → Afișare locație pe hartă; Înregistrare → Trimitere email; Plată rezervare → Procesare plată Stripe; Creare/editare eveniment → Geocodare adresă; Publicare eveniment → Verificare organizator aprobat; Selectare locuri → Blocare locuri 10 minute.
+• «extend» (comportament condiționat): Emitere bilete cu QR extinde plata, condiția fiind confirmarea prin webhook; Gestionare plată eșuată extinde plata, condiția fiind respingerea; Eliberare locuri la expirare extinde blocarea, condiția fiind depășirea celor 10 minute (rulată de jobul periodic, fără actor); Refuzare bilet invalid/utilizat extinde validarea.
+• Selectarea locurilor este «include» față de rezervare, deoarece în modelul curent orice eveniment are o sală cu locuri (vezi punctul de decizie D1).
+• Abonamentul (FREE_TRIAL/MONTHLY) este funcționalitate de bază, nu „extensie opțională”: Activare abonament «include» Procesare plată abonament (Stripe Billing).
+• Administratorul aprobă/respinge organizatori, gestionează utilizatori și permisiuni, vede abonamentele, plățile, auditul și KPI.
 
-Participantul își creează un cont (confirmat prin email), se autentifică, caută evenimente și vede detaliile unui eveniment, inclusiv harta locației. La rezervarea biletelor, locurile sunt blocate temporar. Dacă evenimentul are sală configurată, participantul își alege locurile direct pe harta sălii (*Selectare loc pe harta sălii*, `«extend»`). Dacă plata nu se finalizează în intervalul de 10 minute, locurile sunt eliberate automat (*Eliberare locuri la expirarea rezervării*, `«extend»`). Plata biletelor se face prin Stripe (*Procesare plată prin card*, `«include»`), iar după confirmare sistemul emite biletele cu cod QR și le trimite pe email (*Emitere bilete cu cod QR*, `«include»`). Dacă plata este respinsă, se execută *Gestionare plată eșuată* (`«extend»`), iar biletele nu se emit.
+## 9. Diagrama C4
+Nivel 1: Context
+Elide Events este un singur sistem folosit prin HTTPS de Participant, Organizator și Administrator, care depinde de trei servicii externe: Stripe, SendGrid și Google Maps Platform. Organizatorul lucrează pe planul FREE_TRIAL sau MONTHLY.
+Nivel 2: Containere
+• Aplicația web (SPA, React + TypeScript): listă evenimente, selector de locuri, checkout, hartă, panouri organizator/administrator. Apelează API-ul prin JSON/HTTPS și încarcă harta prin Maps JavaScript API.
+• API REST (Java 17, Spring Boot): straturi controller, service, repository; autentificare cu access/refresh token și RBAC pe server; evenimente, săli, locuri, blocări de 10 minute, comenzi, plăți, emiterea și validarea biletelor, abonamente, rapoarte, audit. Creează plățile Stripe și primește webhook-urile, trimite emailuri prin SendGrid și apelează Geocoding API. Un job periodic (la 30 de secunde) eliberează blocările expirate.
+• Baza de date (PostgreSQL): toate datele; tranzacțiile ACID și row locking garantează că un loc nu se vinde de două ori.
+• Redis (opțional): cache și blocări temporare.
 
-Organizatorul creează și editează evenimente. La salvare, adresa introdusă este transformată în coordonate geografice (*Geocodare adresă*, `«include»`). Tot el gestionează categoriile de bilete, configurează harta sălii și publică evenimentul. Publicarea este permisă doar unui organizator aprobat (*Verificare organizator aprobat*, `«include»`). Funcțiile avansate sunt disponibile pe bază de abonament, iar activarea abonamentului Pro se plătește tot prin Stripe. La intrare, organizatorul validează biletele prin scanarea codului QR, iar un bilet invalid sau deja utilizat este refuzat (*Refuzare bilet invalid sau utilizat*, `«extend»`). De asemenea, vizualizează rapoarte de vânzări și statistici de performanță.
 
-Administratorul platformei aprobă organizatorii, gestionează utilizatorii și permisiunile conturilor și monitorizează funcționarea sistemului.
+## 10. Diagrama UML (clase de domeniu)
+Modelul este organizat pe șapte zone și folosește denumirile din cod (engleză).
+Identitate și organizatori. UserAccount (cod: userId, email, firstName, lastName, role, status) cu UserRole = PARTICIPANT, ORGANIZER, ADMINISTRATOR și AccountStatus = PENDING, ACTIVE, SUSPENDED, DELETED, REJECTED. În modelul țintă RBAC este User → Role → Permission (tabele Role, Permission, RolePermission). Profilurile ParticipantProfile, OrganizerProfile (legat de Company), AdminProfile; OrganizerVerification (PENDING, UNDER_REVIEW, APPROVED, REJECTED) cu Document.
+Evenimente. Event (agregat rădăcină): organizerId, title, description, status, visibility, startAt, endAt, publishedAt, basePrice, currency, hall. EventStatus = DRAFT, PENDING_PUBLICATION, PUBLISHED, IN_PROGRESS, COMPLETED, CANCELLED, DELETED. Conține TicketType (name, price; în modelul țintă și quantity, sold_quantity, perioadă de vânzare) și EventSeat. Câmpurile calculate availableCount, heldCount, soldCount, blockedCount și occupancyRate = vândute / capacitate × 100 (2 zecimale) sunt tranziente.
+Locații și săli. Venue (name, address, city, latitude, longitude, place_id) conține Hall; Hall (agregat rădăcină) conține Seat (rowLabel, seatNumber, label derivat, accessible, active; în modelul țintă și x, y, zonă). EventSeat este locul unei săli pentru un anumit eveniment: status SeatStatus = AVAILABLE, HELD, SOLD, BLOCKED, price, ticketType, holdId, heldUntil. Tranziții permise: AVAILABLE → HELD → SOLD, HELD → AVAILABLE, AVAILABLE → BLOCKED. EventSeat înlocuiește vechea clasă LocEveniment.
+Blocare, comandă, plată, bilet. SeatHold (userId, eventId, expiresAt, status ACTIVE/EXPIRED/CONVERTED/CANCELLED) cu SeatHoldItem → Order (tabela orders; status PENDING, PAYMENT_PROCESSING, PAID, FAILED, EXPIRED, CANCELLED, REFUNDED; total calculat) cu OrderItem (eventSeatId, seatLabel, ticketTypeName, unitPrice) → Ticket (ticketCode, qrToken aleator, status ISSUED/USED/CANCELLED/REFUNDED/EXPIRED, issuedAt, usedAt). Payment (provider, provider_payment_id, amount, status) aparține comenzii; TicketScan (rezultat TicketScanResult: VALID, ALREADY_USED, INVALID, WRONG_EVENT, CANCELLED) păstrează scanările.
+Abonamente. SubscriptionPlan (FREE_TRIAL, MONTHLY) și OrganizerSubscription cu status TRIAL, ACTIVE, PAST_DUE, GRACE_PERIOD, SUSPENDED, CANCELLED, EXPIRED; SubscriptionPayment, Invoice.
+Administrare. AuditLog, Notification.
+Utilitare de domeniu. EventSalesView (view de raport: capacitate, disponibile, blocate, vândute, scanate, neprezentate, venit brut, grad de ocupare) și TicketValidationView (rezultatul scanării).
+Relații: o comandă conține elemente, iar fiecare element generează un bilet; biletul nu este compus în rezervare/comandă, ci legat de OrderItem. Un loc fizic poate apărea în mai multe evenimente prin EventSeat.
 
-Relațiile `«include»` marchează un comportament obligatoriu, care face parte din cazul de bază. Relațiile `«extend»` marchează un comportament condiționat, care apare doar într-o situație anume. Cazul de bază rămâne complet și fără extensie.
-
-*(Diagrama completă este disponibilă în documentația grafică atașată proiectului).*
-
----
-
-## 9. Diagrama C4 – Nivel 1: Context & Nivel 2: Containere
-
-### Nivel 1: Context
-Diagrama de context prezintă Elide Events ca un singur sistem: o platformă SaaS de ticketing și management de evenimente, cu utilizatorii și serviciile externe cu care interacționează.
-
-Sistemul are trei tipuri de utilizatori. Participantul caută evenimente, rezervă și cumpără bilete și primește biletul cu cod QR. Organizatorul creează și administrează evenimente, categorii de bilete și hărți de săli și urmărește vânzările, pe planul Gratuit sau Pro. Administratorul platformei aprobă organizatorii, gestionează utilizatorii și permisiunile și monitorizează sistemul. Toți folosesc aplicația prin HTTPS. Platforma depinde de patru servicii externe. Diagrama nu arată structura internă a sistemului. Aceasta este detaliată în diagrama de containere.
-
-### Nivel 2: Containere
-Diagrama de containere împarte aplicația în trei părți care rulează separat, plus serviciile externe:
-1. **Aplicația web (SPA, React):** Este interfața folosită de toți cei trei actori. Conține lista de evenimente, selectorul de locuri (Seat Map), pagina de checkout, harta interactivă și panourile pentru organizator și administrator. Comunică cu API-ul prin apeluri JSON/HTTPS (REST) și încarcă stilul și datele hărții de la OpenStreetMap prin MapLibre GL JS.
-2. **API-ul REST (Java, Spring Boot):** Conține logica de business, organizată pe straturi (controller, service, repository, cu acces la date prin JPA). Se ocupă de autentificare și roluri, evenimente, rezervări cu expirare la 10 minute, emiterea biletelor cu cod QR, validarea codurilor QR și rapoarte. Contractul REST este documentat cu OpenAPI. API-ul creează sesiunea de plată Stripe Checkout în test mode, trimite emailuri prin SendGrid și apelează Geocoding API pentru adrese.
-3. **Baza de date (PostgreSQL):** Păstrează conturile, evenimentele, sălile și locurile, categoriile de bilete, rezervările, biletele, plățile și abonamentele. Tranzacțiile ACID garantează că același loc nu poate fi vândut de două ori. API-ul citește și scrie în ea prin JDBC.
-
----
-
-## 10. Diagrama UML (Diagrama de clase a domeniului)
-Diagrama de clase descrie modelul de domeniu al aplicației, împărțit în trei zone: conturi și abonamente, evenimente, rezervări și bilete, locații și hărți. Atributele marcate cu „/” sunt derivate, iar enumerările sunt explicate în legendă.
-
-- **Conturi și abonamente:** `Utilizator` este o clasă abstractă, cu atributele comune tuturor conturilor (nume, email, parolă criptată, confirmarea emailului, data înregistrării). Din ea derivă `Administrator`, `Organizator` și `Participant`. Organizatorul are în plus denumire, cod fiscal, date de contact și un statut de aprobare (în așteptare, aprobat sau respins). Un organizator deține zero sau mai multe abonamente, iar fiecare abonament este încheiat conform unui plan (Gratuit sau Pro). Planul stabilește prețul lunar, limita de evenimente și de capacitate și dacă sunt permise harta de locuri, rapoartele avansate și validarea QR.
-- **Evenimente, rezervări și bilete:** Un organizator organizează mai multe evenimente. Evenimentul are tip, perioadă de desfășurare, stare (propus, publicat, anulat, încheiat) și vizibilitate (public sau privat) și poate fi publicat, anulat sau încheiat. El conține categorii de bilete, cu preț, capacitate și perioadă de vânzare, iar numărul de locuri vândute, rezervate și disponibile se calculează. Un participant efectuează mai multe rezervări. O rezervare are un număr de bilete, un total și un termen de expirare și poate fi confirmată sau poate expira. Ea se achită prin una sau mai multe plăți Stripe și emite biletele, adică este în relație de compoziție cu ele. Fiecare bilet are un cod QR unic, o stare (emis, utilizat, anulat) și poate fi validat.
-- **Locații și hărți:** Un eveniment se desfășoară la o locație (cu adresă și coordonate) și poate folosi o sală, formată din locuri cu rând, număr și poziție pe hartă. Clasa `LocEveniment` descrie un loc pentru un anumit eveniment și îi ține starea (liber, rezervat temporar, ocupat). Astfel, același loc fizic poate fi folosit la mai multe evenimente, iar relația mulți-la-mulți dintre Eveniment și Loc este rezolvată prin `LocEveniment`. O rezervare blochează locuri, iar un bilet poate fi legat de un anumit loc.
-
----
-
-## 11. Diagrama SQL (Model relațional, PostgreSQL)
-Diagrama bazei de date traduce modelul de clase în tabele PostgreSQL. Cheile primare sunt marcate PK, cheile străine FK, iar cele unice UK.
-
-- **Moștenirea conturilor:** Ierarhia `Utilizator` – `Administrator`, `Organizator`, `Participant` este implementată prin strategia joined table. Tabelul `utilizator` conține coloanele comune și coloana `tip_utilizator`, iar fiecare subclasă are propriul tabel, a cărui cheie primară este totodată cheie străină către utilizator. Câmpurile specifice (de exemplu `cod_fiscal` și `statut_aprobare` la organizator) stau în tabelul subclasei.
-- **Tabelele, pe zone:**
-  - *Conturi și abonamente:* `utilizator`, `administrator`, `organizator`, `participant`, `abonament_organizator`, `plan_abonament`.
-  - *Evenimente, rezervări și bilete:* `eveniment`, `categorie_bilet`, `rezervare`, `plata`, `bilet`, `loc_eveniment`.
-  - *Locații și hărți:* `locatie`, `sala`, `loc`.
-- **Constrângeri importante:** Au valori unice emailul utilizatorului, codul fiscal, codul QR al biletului, referința plății Stripe și tipul de plan. Tabelul `loc_eveniment` leagă un eveniment de un loc fizic și ține starea locului. Biletul are cheie străină unică către `loc_eveniment`, pentru ca același loc să nu poată fi vândut de două ori. Sumele de bani sunt `NUMERIC(10,2)`, momentele de timp sunt `TIMESTAMP`, iar coordonatele sunt `DOUBLE PRECISION`. Coloanele de stare sunt `VARCHAR` cu constrângere `CHECK`, cu aceleași valori ca enumerările din diagrama de clase.
+## 11. Diagrama SQL (PostgreSQL)
+Moștenirea conturilor: tabel utilizator/user cu coloanele comune și tip_utilizator, plus tabelele de profil cu PK = FK (joined table). Statusul contului este coloană separată de rol.
+Tabele, pe zone: identitate (user, role, permission, role_permission, refresh_token, password_reset_token); organizatori (organizer_profile, company, organizer_verification, document); evenimente (event, event_category, event_location, ticket_type); săli (venue, hall, seat_zone, seat, event_seat); vânzări (seat_hold, seat_hold_item, orders, order_item, payment, payment_transaction); bilete (ticket, ticket_scan); abonamente (subscription_plan, organizer_subscription, subscription_payment, invoice); administrare (audit_log, notification, favorite, event_view).
+Constrângeri esențiale: UNIQUE pe email, cod fiscal, qr_token, ticket_code, provider_payment_id și (event_id, seat_id) în event_seat; ticket.event_seat_id unic pentru bilete active; sume NUMERIC(10,2); momente TIMESTAMP; coloane de stare VARCHAR cu CHECK, cu aceleași valori ca enumerările din cod. Tabela comenzilor se numește orders (cuvânt rezervat).
