@@ -288,6 +288,7 @@ Planificarea, urmărirea task-urilor și colaborarea din cadrul echipei pentru *
   * **In Progress / In Review:** Lucrul colaborativ pe ramuri și validarea reciprocă a deciziilor arhitecturale (ex. diferențierea `cancelEvent` cu compensare automată față de `deleteEvent` cu blocare fiscală).
   * **Done (Acceptance Criteria Verified):** Toate cele 7 suite de teste trec cu succes (`mvn test`), verificând regulile funcționale și nefuncționale (SLA-uri de concurență).
 
+🔗 **Link Board Trello:** https://trello.com/b/xBhmPq6n/sprintul-2-model-de-domeniu-%C8%99i-servicii-de-business
 ---
 
 ## 2. Structura Proiectului
