@@ -1,0 +1,172 @@
+@startuml ElideEvents_ERD
+title Elide Events – PostgreSQL database diagram (v5)
+hide circle
+skinparam shadowing false
+entity user_account {
+  id : UUID <PK>
+  email : VARCHAR(255) <UK>
+  password_hash
+  first_name, last_name
+  role : VARCHAR(15)
+  status : VARCHAR(15)
+  email_verified : BOOLEAN
+  created_at, deleted_at
+}
+entity company {
+  id : UUID <PK>
+  organizer_id <FK>
+  legal_name
+  tax_number <UK>
+}
+entity organizer_verification {
+  id : UUID <PK>
+  organizer_id <FK>
+  status : VARCHAR(20)
+  reviewed_by <FK>
+  submitted_at, reviewed_at
+  rejection_reason
+}
+entity subscription_plan {
+  id : UUID <PK>
+  code : VARCHAR(20) <UK>
+  price : NUMERIC(10,2)
+  currency, interval
+  external_price_id
+}
+entity organizer_subscription {
+  id : UUID <PK>
+  organizer_id <FK>
+  plan_id <FK>
+  status : VARCHAR(20)
+  external_subscription_id
+  current_period_start / end
+  grace_period_until
+}
+entity venue {
+  id : UUID <PK>
+  name, address, city
+  latitude, longitude : DOUBLE
+  place_id
+}
+entity hall {
+  id : UUID <PK>
+  venue_id <FK>
+  name
+}
+entity seat {
+  id : UUID <PK>
+  hall_id <FK>
+  row_label, seat_number
+  x, y : INTEGER
+  accessible, active : BOOLEAN
+  UNIQUE(hall_id,row_label,seat_number)
+}
+entity event {
+  id : UUID <PK>
+  organizer_id <FK>
+  hall_id <FK>
+  title : VARCHAR(200)
+  status : VARCHAR(25)
+  visibility : VARCHAR(10)
+  start_at, end_at, published_at
+  base_price : NUMERIC(10,2)
+  currency : CHAR(3)
+}
+entity ticket_type {
+  id : UUID <PK>
+  event_id <FK>
+  name
+  price : NUMERIC(10,2)
+  quantity, sold_quantity
+}
+entity event_seat {
+  id : UUID <PK>
+  event_id <FK>
+  seat_id <FK>
+  ticket_type_id <FK>
+  status : AVAILABLE|HELD|SOLD|BLOCKED
+  price : NUMERIC(10,2)
+  hold_id <FK>, held_until
+  UNIQUE(event_id, seat_id)
+}
+entity seat_hold {
+  id : UUID <PK>
+  user_id <FK>
+  event_id <FK>
+  created_at, expires_at
+  status : VARCHAR(15)
+}
+entity seat_hold_item {
+  id : UUID <PK>
+  hold_id <FK>
+  event_seat_id <FK>
+}
+entity orders {
+  id : UUID <PK>
+  user_id <FK>
+  event_id <FK>
+  hold_id <FK>
+  status : VARCHAR(25)
+  total : NUMERIC(10,2)
+  created_at, expires_at, paid_at
+}
+entity order_item {
+  id : UUID <PK>
+  order_id <FK>
+  event_seat_id <FK>
+  seat_label, ticket_type_name
+  unit_price : NUMERIC(10,2)
+}
+entity payment {
+  id : UUID <PK>
+  order_id <FK>
+  provider : VARCHAR(20)
+  provider_payment_id <UK>
+  amount : NUMERIC(10,2)
+  status : VARCHAR(20)
+  paid_at, failed_at, failure_reason
+}
+entity ticket {
+  id : UUID <PK>
+  order_item_id <FK>
+  event_id, user_id <FK>
+  event_seat_id <FK>
+  ticket_code <UK>
+  qr_token <UK>
+  status : VARCHAR(15)
+  issued_at, used_at
+}
+entity ticket_scan {
+  id : UUID <PK>
+  ticket_id <FK>
+  event_id <FK>
+  scanned_by <FK>
+  scanned_at
+  result : VARCHAR(15)
+  device_id
+}
+user_account ||--o{ company
+user_account ||--o{ organizer_verification
+user_account ||--o{ organizer_subscription
+subscription_plan ||--o{ organizer_subscription
+user_account ||--o{ event
+venue ||--|{ hall
+hall ||--|{ seat
+hall ||--o{ event
+event ||--|{ ticket_type
+event ||--|{ event_seat
+seat ||--o{ event_seat
+ticket_type ||--o{ event_seat
+user_account ||--o{ seat_hold
+event ||--o{ seat_hold
+seat_hold ||--|{ seat_hold_item
+event_seat ||--o{ seat_hold_item
+user_account ||--o{ orders
+event ||--o{ orders
+seat_hold ||--o{ orders
+orders ||--|{ order_item
+event_seat ||--o{ order_item
+orders ||--o{ payment
+order_item ||--o| ticket
+ticket ||--o{ ticket_scan
+@enduml

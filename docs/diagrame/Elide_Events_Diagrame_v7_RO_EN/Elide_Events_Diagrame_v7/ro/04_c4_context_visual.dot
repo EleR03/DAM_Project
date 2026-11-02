@@ -1,0 +1,18 @@
+digraph G {
+rankdir=TB; nodesep=0.6; ranksep=1.1; splines=true;
+graph [bgcolor=white, pad=0.4, fontname="DejaVu Sans", labelloc=t, fontsize=24, label="Elide Events – C4 nivel 1: Context (v7)"];
+node [fontname="DejaVu Sans", fontsize=12]; edge [fontname="DejaVu Sans", fontsize=10, color="#526779", arrowsize=0.8];
+client [shape=box, style="filled,rounded", fillcolor="#08427B", color="#08427B", fontcolor=white, margin="0.2,0.15", label=<<B>Participant</B><BR/><FONT POINT-SIZE="9">[Persoană]</FONT><BR/><FONT POINT-SIZE="10">Caută evenimente, blochează locuri<BR/>10 minute, plătește, primește<BR/>bilete cu QR</FONT>>];
+org [shape=box, style="filled,rounded", fillcolor="#08427B", color="#08427B", fontcolor=white, margin="0.2,0.15", label=<<B>Organizator</B><BR/><FONT POINT-SIZE="9">[Persoană]</FONT><BR/><FONT POINT-SIZE="10">Creează evenimente, tipuri de<BR/>bilete și săli; validează biletele<BR/>QR; rapoarte; plan FREE_TRIAL /<BR/>MONTHLY</FONT>>];
+admin [shape=box, style="filled,rounded", fillcolor="#08427B", color="#08427B", fontcolor=white, margin="0.2,0.15", label=<<B>Administrator</B><BR/><FONT POINT-SIZE="9">[Persoană]</FONT><BR/><FONT POINT-SIZE="10">Aprobă organizatori, gestionează<BR/>utilizatori și permisiuni, KPI și<BR/>audit</FONT>>];
+elide [shape=box, style="filled,rounded", fillcolor="#1168BD", color="#1168BD", fontcolor=white, margin="0.2,0.15", label=<<B>Elide Events</B><BR/><FONT POINT-SIZE="9">[Sistem software]</FONT><BR/><FONT POINT-SIZE="10">Platformă SaaS de ticketing și<BR/>management de evenimente</FONT>>];
+pay [shape=box, style="filled,rounded", fillcolor="#999999", color="#999999", fontcolor=white, margin="0.2,0.15", label=<<B>Stripe</B><BR/><FONT POINT-SIZE="9">[Sistem extern]</FONT><BR/><FONT POINT-SIZE="10">Plăți bilete (Test Mode),<BR/>abonamente (Billing), webhook-uri</FONT>>];
+mail [shape=box, style="filled,rounded", fillcolor="#999999", color="#999999", fontcolor=white, margin="0.2,0.15", label=<<B>SendGrid</B><BR/><FONT POINT-SIZE="9">[Sistem extern]</FONT><BR/><FONT POINT-SIZE="10">Confirmări de cont, bilete cu QR,<BR/>notificări</FONT>>];
+maps [shape=box, style="filled,rounded", fillcolor="#999999", color="#999999", fontcolor=white, margin="0.2,0.15", label=<<B>Google Maps Platform</B><BR/><FONT POINT-SIZE="9">[Sistem extern]</FONT><BR/><FONT POINT-SIZE="10">Maps JavaScript API, Places<BR/>Autocomplete, Geocoding API</FONT>>];
+client -> elide [label=<Caută, blochează locuri, plătește<BR/><FONT POINT-SIZE="9">[HTTPS]</FONT>>];
+org -> elide [label=<Gestionează evenimente, validează bilete, rapoarte<BR/><FONT POINT-SIZE="9">[HTTPS]</FONT>>];
+admin -> elide [label=<Administrează platforma<BR/><FONT POINT-SIZE="9">[HTTPS]</FONT>>];
+elide -> pay [label=<Creează plata; primește confirmarea<BR/><FONT POINT-SIZE="9">[HTTPS API / webhook]</FONT>>];
+elide -> mail [label=<Trimite emailuri<BR/><FONT POINT-SIZE="9">[HTTPS API]</FONT>>];
+elide -> maps [label=<Hartă; geocodare adrese<BR/><FONT POINT-SIZE="9">[HTTPS API]</FONT>>];
+}

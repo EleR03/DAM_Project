@@ -1,0 +1,26 @@
+@startuml
+!include <C4/C4_Container>
+title Elide Events – C4 level 2: Containers (v7)
+Person(client,"Participant")
+Person(org,"Organizer")
+Person(admin,"Administrator")
+System_Boundary(b,"Elide Events"){
+ Container(web,"Web application","React + TypeScript","SPA")
+ Container(api,"REST API","Java 17, Spring Boot","Business logic, RBAC, 10-min holds, orders, tickets")
+ ContainerDb(db,"Database","PostgreSQL","ACID, row locking")
+ ContainerDb(redis,"Cache","Redis (optional)","Temporary locks")
+}
+System_Ext(pay,"Stripe","Payments, Billing, webhook")
+System_Ext(mail,"SendGrid","Email")
+System_Ext(maps,"Google Maps Platform","Maps JS, Places, Geocoding")
+Rel(client,web,"Uses","HTTPS")
+Rel(org,web,"Uses","HTTPS")
+Rel(admin,web,"Uses","HTTPS")
+Rel(web,api,"API calls","JSON/HTTPS")
+Rel(api,db,"Reads/writes","JPA/JDBC")
+Rel(api,redis,"Cache, locks","TCP")
+Rel(api,pay,"Payment, webhook","HTTPS")
+Rel(api,mail,"Emails","HTTPS")
+Rel(web,maps,"Map","Maps JS API")
+Rel(api,maps,"Geocoding","Geocoding API")
+@enduml

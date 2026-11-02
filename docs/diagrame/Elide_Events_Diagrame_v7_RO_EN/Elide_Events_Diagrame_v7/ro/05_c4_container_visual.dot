@@ -1,0 +1,27 @@
+digraph G {
+rankdir=TB; nodesep=0.6; ranksep=1.1; splines=true;
+graph [bgcolor=white, pad=0.4, fontname="DejaVu Sans", labelloc=t, fontsize=24, label="Elide Events – C4 nivel 2: Containere (v7)"];
+node [fontname="DejaVu Sans", fontsize=12]; edge [fontname="DejaVu Sans", fontsize=10, color="#526779", arrowsize=0.8];
+client [shape=box, style="filled,rounded", fillcolor="#08427B", color="#08427B", fontcolor=white, margin="0.2,0.15", label=<<B>Participant</B><BR/><FONT POINT-SIZE="9">[Persoană]</FONT><BR/><FONT POINT-SIZE="10">Blochează locuri și plătește</FONT>>];
+org [shape=box, style="filled,rounded", fillcolor="#08427B", color="#08427B", fontcolor=white, margin="0.2,0.15", label=<<B>Organizator</B><BR/><FONT POINT-SIZE="9">[Persoană]</FONT><BR/><FONT POINT-SIZE="10">Evenimente, validare QR, rapoarte</FONT>>];
+admin [shape=box, style="filled,rounded", fillcolor="#08427B", color="#08427B", fontcolor=white, margin="0.2,0.15", label=<<B>Administrator</B><BR/><FONT POINT-SIZE="9">[Persoană]</FONT><BR/><FONT POINT-SIZE="10">Aprobă organizatori, KPI, audit</FONT>>];
+pay [shape=box, style="filled,rounded", fillcolor="#999999", color="#999999", fontcolor=white, margin="0.2,0.15", label=<<B>Stripe</B><BR/><FONT POINT-SIZE="9">[Sistem extern]</FONT><BR/><FONT POINT-SIZE="10">Plăți și Billing, webhook</FONT>>];
+mail [shape=box, style="filled,rounded", fillcolor="#999999", color="#999999", fontcolor=white, margin="0.2,0.15", label=<<B>SendGrid</B><BR/><FONT POINT-SIZE="9">[Sistem extern]</FONT><BR/><FONT POINT-SIZE="10">Emailuri</FONT>>];
+maps [shape=box, style="filled,rounded", fillcolor="#999999", color="#999999", fontcolor=white, margin="0.2,0.15", label=<<B>Google Maps Platform</B><BR/><FONT POINT-SIZE="9">[Sistem extern]</FONT><BR/><FONT POINT-SIZE="10">Maps JS, Places, Geocoding</FONT>>];
+subgraph cluster_b { label="Elide Events"; style="dashed,rounded"; color="#1168BD"; fontsize=14;
+web [shape=box, style="filled,rounded", fillcolor="#438DD5", color="#438DD5", fontcolor=white, margin="0.2,0.15", label=<<B>Aplicație web (SPA)</B><BR/><FONT POINT-SIZE="9">[React + TypeScript]</FONT><BR/><FONT POINT-SIZE="10">Listă evenimente, selector de<BR/>locuri, checkout, hartă, panouri<BR/>organizator și administrator</FONT>>];
+api [shape=box, style="filled,rounded", fillcolor="#438DD5", color="#438DD5", fontcolor=white, margin="0.2,0.15", label=<<B>API REST</B><BR/><FONT POINT-SIZE="9">[Java 17, Spring Boot]</FONT><BR/><FONT POINT-SIZE="10">Autentificare și RBAC pe server,<BR/>evenimente (anulare/ștergere),<BR/>săli, blocări 10 min (job la 30 s,<BR/>limită 8 bilete), comenzi, plăți<BR/>(verificare înainte de încasare),<BR/>bilete QR, validare, abonamente,<BR/>rapoarte, audit</FONT>>];
+db [shape=cylinder, style=filled, fillcolor="#438DD5", color="#438DD5", fontcolor=white, margin="0.2,0.15", label=<<B>Bază de date</B><BR/><FONT POINT-SIZE="9">[PostgreSQL]</FONT><BR/><FONT POINT-SIZE="10">Conturi, evenimente, săli, locuri,<BR/>blocări, comenzi, plăți, bilete,<BR/>scanări, abonamente. ACID + row<BR/>locking</FONT>>];
+redis [shape=cylinder, style=filled, fillcolor="#438DD5", color="#438DD5", fontcolor=white, margin="0.2,0.15", label=<<B>Cache / blocări temporare</B><BR/><FONT POINT-SIZE="9">[Redis (opțional)]</FONT><BR/><FONT POINT-SIZE="10">Blocări și sesiuni temporare</FONT>>];
+}
+client -> web [label=<Folosește<BR/><FONT POINT-SIZE="9">[HTTPS]</FONT>>];
+org -> web [label=<Folosește<BR/><FONT POINT-SIZE="9">[HTTPS]</FONT>>];
+admin -> web [label=<Folosește<BR/><FONT POINT-SIZE="9">[HTTPS]</FONT>>];
+web -> api [label=<Apeluri API<BR/><FONT POINT-SIZE="9">[JSON / HTTPS (REST, OpenAPI)]</FONT>>];
+api -> db [label=<Citește și scrie<BR/><FONT POINT-SIZE="9">[JPA / JDBC]</FONT>>];
+api -> redis [label=<Cache, blocări<BR/><FONT POINT-SIZE="9">[TCP]</FONT>>];
+api -> pay [label=<Creează plata; primește webhook<BR/><FONT POINT-SIZE="9">[HTTPS API / webhook]</FONT>>];
+api -> mail [label=<Trimite confirmări și bilete<BR/><FONT POINT-SIZE="9">[HTTPS API]</FONT>>];
+web -> maps [label=<Afișează harta<BR/><FONT POINT-SIZE="9">[Maps JavaScript API]</FONT>>];
+api -> maps [label=<Geocodează adresa<BR/><FONT POINT-SIZE="9">[Geocoding API]</FONT>>];
+}

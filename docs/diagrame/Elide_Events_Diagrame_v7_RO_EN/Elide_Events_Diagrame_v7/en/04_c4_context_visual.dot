@@ -1,0 +1,18 @@
+digraph G {
+rankdir=TB; nodesep=0.6; ranksep=1.1; splines=true;
+graph [bgcolor=white, pad=0.4, fontname="DejaVu Sans", labelloc=t, fontsize=24, label="Elide Events – C4 level 1: System context (v7)"];
+node [fontname="DejaVu Sans", fontsize=12]; edge [fontname="DejaVu Sans", fontsize=10, color="#526779", arrowsize=0.8];
+client [shape=box, style="filled,rounded", fillcolor="#08427B", color="#08427B", fontcolor=white, margin="0.2,0.15", label=<<B>Participant</B><BR/><FONT POINT-SIZE="9">[Person]</FONT><BR/><FONT POINT-SIZE="10">Searches events, holds seats for<BR/>10 minutes, pays, receives QR<BR/>tickets</FONT>>];
+org [shape=box, style="filled,rounded", fillcolor="#08427B", color="#08427B", fontcolor=white, margin="0.2,0.15", label=<<B>Organizer</B><BR/><FONT POINT-SIZE="9">[Person]</FONT><BR/><FONT POINT-SIZE="10">Creates events, ticket types and<BR/>halls; validates QR tickets;<BR/>reports; FREE_TRIAL / MONTHLY plan</FONT>>];
+admin [shape=box, style="filled,rounded", fillcolor="#08427B", color="#08427B", fontcolor=white, margin="0.2,0.15", label=<<B>Administrator</B><BR/><FONT POINT-SIZE="9">[Person]</FONT><BR/><FONT POINT-SIZE="10">Approves organizers, manages users<BR/>and permissions, KPIs and audit</FONT>>];
+elide [shape=box, style="filled,rounded", fillcolor="#1168BD", color="#1168BD", fontcolor=white, margin="0.2,0.15", label=<<B>Elide Events</B><BR/><FONT POINT-SIZE="9">[Software system]</FONT><BR/><FONT POINT-SIZE="10">SaaS ticketing and event<BR/>management platform</FONT>>];
+pay [shape=box, style="filled,rounded", fillcolor="#999999", color="#999999", fontcolor=white, margin="0.2,0.15", label=<<B>Stripe</B><BR/><FONT POINT-SIZE="9">[External system]</FONT><BR/><FONT POINT-SIZE="10">Ticket payments (Test Mode),<BR/>subscriptions (Billing), webhooks</FONT>>];
+mail [shape=box, style="filled,rounded", fillcolor="#999999", color="#999999", fontcolor=white, margin="0.2,0.15", label=<<B>SendGrid</B><BR/><FONT POINT-SIZE="9">[External system]</FONT><BR/><FONT POINT-SIZE="10">Account confirmations, QR tickets,<BR/>notifications</FONT>>];
+maps [shape=box, style="filled,rounded", fillcolor="#999999", color="#999999", fontcolor=white, margin="0.2,0.15", label=<<B>Google Maps Platform</B><BR/><FONT POINT-SIZE="9">[External system]</FONT><BR/><FONT POINT-SIZE="10">Maps JavaScript API, Places<BR/>Autocomplete, Geocoding API</FONT>>];
+client -> elide [label=<Searches, holds seats, pays<BR/><FONT POINT-SIZE="9">[HTTPS]</FONT>>];
+org -> elide [label=<Manages events, validates tickets, reports<BR/><FONT POINT-SIZE="9">[HTTPS]</FONT>>];
+admin -> elide [label=<Administers the platform<BR/><FONT POINT-SIZE="9">[HTTPS]</FONT>>];
+elide -> pay [label=<Creates payment; receives confirmation<BR/><FONT POINT-SIZE="9">[HTTPS API / webhook]</FONT>>];
+elide -> mail [label=<Sends emails<BR/><FONT POINT-SIZE="9">[HTTPS API]</FONT>>];
+elide -> maps [label=<Map; address geocoding<BR/><FONT POINT-SIZE="9">[HTTPS API]</FONT>>];
+}

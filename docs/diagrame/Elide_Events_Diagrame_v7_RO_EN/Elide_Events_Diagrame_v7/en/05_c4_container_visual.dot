@@ -1,0 +1,27 @@
+digraph G {
+rankdir=TB; nodesep=0.6; ranksep=1.1; splines=true;
+graph [bgcolor=white, pad=0.4, fontname="DejaVu Sans", labelloc=t, fontsize=24, label="Elide Events – C4 level 2: Containers (v7)"];
+node [fontname="DejaVu Sans", fontsize=12]; edge [fontname="DejaVu Sans", fontsize=10, color="#526779", arrowsize=0.8];
+client [shape=box, style="filled,rounded", fillcolor="#08427B", color="#08427B", fontcolor=white, margin="0.2,0.15", label=<<B>Participant</B><BR/><FONT POINT-SIZE="9">[Person]</FONT><BR/><FONT POINT-SIZE="10">Holds seats and pays</FONT>>];
+org [shape=box, style="filled,rounded", fillcolor="#08427B", color="#08427B", fontcolor=white, margin="0.2,0.15", label=<<B>Organizer</B><BR/><FONT POINT-SIZE="9">[Person]</FONT><BR/><FONT POINT-SIZE="10">Events, QR validation, reports</FONT>>];
+admin [shape=box, style="filled,rounded", fillcolor="#08427B", color="#08427B", fontcolor=white, margin="0.2,0.15", label=<<B>Administrator</B><BR/><FONT POINT-SIZE="9">[Person]</FONT><BR/><FONT POINT-SIZE="10">Approves organizers, KPIs, audit</FONT>>];
+pay [shape=box, style="filled,rounded", fillcolor="#999999", color="#999999", fontcolor=white, margin="0.2,0.15", label=<<B>Stripe</B><BR/><FONT POINT-SIZE="9">[External system]</FONT><BR/><FONT POINT-SIZE="10">Payments and Billing, webhook</FONT>>];
+mail [shape=box, style="filled,rounded", fillcolor="#999999", color="#999999", fontcolor=white, margin="0.2,0.15", label=<<B>SendGrid</B><BR/><FONT POINT-SIZE="9">[External system]</FONT><BR/><FONT POINT-SIZE="10">Emails</FONT>>];
+maps [shape=box, style="filled,rounded", fillcolor="#999999", color="#999999", fontcolor=white, margin="0.2,0.15", label=<<B>Google Maps Platform</B><BR/><FONT POINT-SIZE="9">[External system]</FONT><BR/><FONT POINT-SIZE="10">Maps JS, Places, Geocoding</FONT>>];
+subgraph cluster_b { label="Elide Events"; style="dashed,rounded"; color="#1168BD"; fontsize=14;
+web [shape=box, style="filled,rounded", fillcolor="#438DD5", color="#438DD5", fontcolor=white, margin="0.2,0.15", label=<<B>Web application (SPA)</B><BR/><FONT POINT-SIZE="9">[React + TypeScript]</FONT><BR/><FONT POINT-SIZE="10">Event list, seat selector,<BR/>checkout, map, organizer and admin<BR/>panels</FONT>>];
+api [shape=box, style="filled,rounded", fillcolor="#438DD5", color="#438DD5", fontcolor=white, margin="0.2,0.15", label=<<B>REST API</B><BR/><FONT POINT-SIZE="9">[Java 17, Spring Boot]</FONT><BR/><FONT POINT-SIZE="10">Server-side auth and RBAC, events<BR/>(cancel/delete), halls, 10-min<BR/>holds (30 s job, 8-ticket limit),<BR/>orders, payments (checked before<BR/>charging), QR tickets, validation,<BR/>subscriptions, reports, audit</FONT>>];
+db [shape=cylinder, style=filled, fillcolor="#438DD5", color="#438DD5", fontcolor=white, margin="0.2,0.15", label=<<B>Database</B><BR/><FONT POINT-SIZE="9">[PostgreSQL]</FONT><BR/><FONT POINT-SIZE="10">Accounts, events, halls, seats,<BR/>holds, orders, payments, tickets,<BR/>scans, subscriptions. ACID + row<BR/>locking</FONT>>];
+redis [shape=cylinder, style=filled, fillcolor="#438DD5", color="#438DD5", fontcolor=white, margin="0.2,0.15", label=<<B>Cache / temporary locks</B><BR/><FONT POINT-SIZE="9">[Redis (optional)]</FONT><BR/><FONT POINT-SIZE="10">Temporary locks and sessions</FONT>>];
+}
+client -> web [label=<Uses<BR/><FONT POINT-SIZE="9">[HTTPS]</FONT>>];
+org -> web [label=<Uses<BR/><FONT POINT-SIZE="9">[HTTPS]</FONT>>];
+admin -> web [label=<Uses<BR/><FONT POINT-SIZE="9">[HTTPS]</FONT>>];
+web -> api [label=<API calls<BR/><FONT POINT-SIZE="9">[JSON / HTTPS (REST, OpenAPI)]</FONT>>];
+api -> db [label=<Reads and writes<BR/><FONT POINT-SIZE="9">[JPA / JDBC]</FONT>>];
+api -> redis [label=<Cache, locks<BR/><FONT POINT-SIZE="9">[TCP]</FONT>>];
+api -> pay [label=<Creates payment; receives webhook<BR/><FONT POINT-SIZE="9">[HTTPS API / webhook]</FONT>>];
+api -> mail [label=<Sends confirmations and tickets<BR/><FONT POINT-SIZE="9">[HTTPS API]</FONT>>];
+web -> maps [label=<Displays the map<BR/><FONT POINT-SIZE="9">[Maps JavaScript API]</FONT>>];
+api -> maps [label=<Geocodes the address<BR/><FONT POINT-SIZE="9">[Geocoding API]</FONT>>];
+}

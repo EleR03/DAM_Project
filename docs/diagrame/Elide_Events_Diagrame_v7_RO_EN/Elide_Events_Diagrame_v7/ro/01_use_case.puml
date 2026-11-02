@@ -1,0 +1,112 @@
+@startuml ElideEvents_UseCase
+title Elide Events – Diagrama cazurilor de utilizare (v7)
+left to right direction
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam defaultFontName Arial
+actor "Utilizator\n(autentificat)" as User
+actor "Participant" as Client
+actor "Organizator" as Org
+actor "Administrator" as Admin
+actor "Planificator\n(job periodic)" as Sched
+actor "Stripe\n(Test Mode + Billing)" as Pay_ <<sistem extern>>
+actor "SendGrid" as Mail <<sistem extern>>
+actor "Google Maps\nPlatform" as Maps <<sistem extern>>
+rectangle "Elide Events" {
+  package "Cont și căutare evenimente" #E3EAF4 {
+    usecase "Înregistrare" as UCReg
+    usecase "Autentificare" as UCLogin
+    usecase "Deconectare" as UCLogout
+    usecase "Căutare evenimente\npublicate" as UCSearch
+    usecase "Vizualizare detalii\neveniment" as UCDetail
+    usecase "Afișare locație\npe hartă" as UCMap
+    usecase "Trimitere email" as UCMail1
+    usecase "Cerere de organizator" as UCApply
+  }
+  package "Rezervare, plată, bilete" #FBE6E1 {
+    usecase "Rezervare bilete\n(blocare 10 min)" as UCRes
+    usecase "Selectare locuri\npe harta sălii" as UCSeat
+    usecase "Respingere rezervare\n(loc ocupat / peste 8 bilete)" as UCRejRes
+    usecase "Eliberare locuri la\nexpirare (job 30 s)" as UCRel
+    usecase "Plată comandă" as UCPay
+    usecase "Verificare rezervare\nînainte de încasare" as UCStart
+    usecase "Respingere plată:\nrezervare expirată" as UCRejPay
+    usecase "Procesare plată\nStripe (webhook)" as UCProc
+    usecase "Gestionare\nplată eșuată" as UCFail
+    usecase "Emitere bilete\ncu token QR" as UCIssue
+    usecase "Trimitere email" as UCMail2
+    usecase "Vizualizare bilete" as UCMyTk
+  }
+  package "Organizator: evenimente și abonament" #FDF0DA {
+    usecase "Creare / editare\neveniment (DRAFT)" as UCCrud
+    usecase "Geocodare adresă" as UCGeo
+    usecase "Ștergere eveniment\n(doar fără bilete vândute)" as UCDelete
+    usecase "Reducere capacitate\ncategorie de bilete" as UCReduceCap
+    usecase "Gestionare tipuri\nde bilete" as UCCat
+    usecase "Anulare eveniment\n(flux de compensare)" as UCCancel
+    usecase "Inițiere rambursări\n(Stripe, sprint viitor)" as UCRefund
+    usecase "Configurare sală\nși locuri" as UCSeatCfg
+    usecase "Publicare eveniment" as UCPub
+    usecase "Verificare organizator\naprobat" as UCChk
+    usecase "Validare bilet\nprin cod QR" as UCVal
+    usecase "Refuzare bilet invalid,\nutilizat sau alt eveniment" as UCRef
+    usecase "Rapoarte vânzări\nși statistici" as UCRep
+    usecase "Activare abonament\n(FREE_TRIAL / MONTHLY)" as UCSub
+    usecase "Procesare plată\nabonament" as UCSubPay
+  }
+  package "Administrare platformă" #E4F1E4 {
+    usecase "Aprobare / respingere\norganizator" as UCAppr
+    usecase "Gestionare utilizatori\nși permisiuni (RBAC)" as UCUsr
+    usecase "Monitorizare: KPI,\nabonamente, audit" as UCMon
+  }
+}
+User --> UCLogin
+User --> UCLogout
+Client --> UCReg
+Client --> UCSearch
+Client --> UCDetail
+Client --> UCApply
+Client --> UCRes
+Client --> UCPay
+Client --> UCMyTk
+Org --> UCCrud
+Org --> UCDelete
+Org --> UCReduceCap
+Org --> UCCat
+Org --> UCCancel
+Org --> UCSeatCfg
+Org --> UCPub
+Org --> UCVal
+Org --> UCRep
+Org --> UCSub
+Admin --> UCAppr
+Admin --> UCUsr
+Admin --> UCMon
+Sched --> UCRel
+UCProc -- Pay_
+UCSubPay -- Pay_
+UCRefund -- Pay_
+UCMail1 -- Mail
+UCMail2 -- Mail
+UCMap -- Maps
+UCGeo -- Maps
+Client --|> User
+Org --|> User
+Admin --|> User
+UCDetail ..> UCMap : <<include>>
+UCReg ..> UCMail1 : <<include>>
+UCRes ..> UCSeat : <<include>>
+UCPay ..> UCStart : <<include>>
+UCPay ..> UCProc : <<include>>
+UCIssue ..> UCMail2 : <<include>>
+UCCrud ..> UCGeo : <<include>>
+UCCancel ..> UCRefund : <<include>>
+UCPub ..> UCChk : <<include>>
+UCSub ..> UCSubPay : <<include>>
+UCRel ..> UCRes : <<extend>>
+UCRejRes ..> UCRes : <<extend>>
+UCRejPay ..> UCPay : <<extend>>
+UCIssue ..> UCPay : <<extend>>
+UCFail ..> UCPay : <<extend>>
+UCRef ..> UCVal : <<extend>>
+@enduml

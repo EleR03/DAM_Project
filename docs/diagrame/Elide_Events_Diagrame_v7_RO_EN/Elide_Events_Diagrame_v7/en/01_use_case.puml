@@ -1,0 +1,112 @@
+@startuml ElideEvents_UseCase
+title Elide Events – Use case diagram (v7)
+left to right direction
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam defaultFontName Arial
+actor "User\n(authenticated)" as User
+actor "Participant" as Client
+actor "Organizer" as Org
+actor "Administrator" as Admin
+actor "Scheduler\n(periodic job)" as Sched
+actor "Stripe\n(Test Mode + Billing)" as Pay_ <<external system>>
+actor "SendGrid" as Mail <<external system>>
+actor "Google Maps\nPlatform" as Maps <<external system>>
+rectangle "Elide Events" {
+  package "Account and event search" #E3EAF4 {
+    usecase "Register" as UCReg
+    usecase "Log in" as UCLogin
+    usecase "Log out" as UCLogout
+    usecase "Search published\nevents" as UCSearch
+    usecase "View event\ndetails" as UCDetail
+    usecase "Show location\non map" as UCMap
+    usecase "Send email" as UCMail1
+    usecase "Apply as organizer" as UCApply
+  }
+  package "Booking, payment, tickets" #FBE6E1 {
+    usecase "Reserve tickets\n(10-min hold)" as UCRes
+    usecase "Select seats on\nthe hall map" as UCSeat
+    usecase "Reject reservation\n(seat taken / over 8 tickets)" as UCRejRes
+    usecase "Release seats on\nexpiry (30 s job)" as UCRel
+    usecase "Pay order" as UCPay
+    usecase "Check hold before\ncharging the card" as UCStart
+    usecase "Reject payment:\nhold expired" as UCRejPay
+    usecase "Process payment\nvia Stripe (webhook)" as UCProc
+    usecase "Handle failed\npayment" as UCFail
+    usecase "Issue tickets\nwith QR token" as UCIssue
+    usecase "Send email" as UCMail2
+    usecase "View tickets" as UCMyTk
+  }
+  package "Organizer: events and subscription" #FDF0DA {
+    usecase "Create / edit\nevent (DRAFT)" as UCCrud
+    usecase "Geocode address" as UCGeo
+    usecase "Delete event\n(only with no tickets sold)" as UCDelete
+    usecase "Reduce ticket\ncategory capacity" as UCReduceCap
+    usecase "Manage ticket\ntypes" as UCCat
+    usecase "Cancel event\n(compensation flow)" as UCCancel
+    usecase "Start refunds\n(Stripe, future sprint)" as UCRefund
+    usecase "Configure hall\nand seats" as UCSeatCfg
+    usecase "Publish event" as UCPub
+    usecase "Check approved\norganizer" as UCChk
+    usecase "Validate ticket\nby QR code" as UCVal
+    usecase "Reject invalid, used\nor wrong-event ticket" as UCRef
+    usecase "Sales reports\nand statistics" as UCRep
+    usecase "Activate subscription\n(FREE_TRIAL / MONTHLY)" as UCSub
+    usecase "Process subscription\npayment" as UCSubPay
+  }
+  package "Platform administration" #E4F1E4 {
+    usecase "Approve / reject\norganizer" as UCAppr
+    usecase "Manage users and\npermissions (RBAC)" as UCUsr
+    usecase "Monitoring: KPIs,\nsubscriptions, audit" as UCMon
+  }
+}
+User --> UCLogin
+User --> UCLogout
+Client --> UCReg
+Client --> UCSearch
+Client --> UCDetail
+Client --> UCApply
+Client --> UCRes
+Client --> UCPay
+Client --> UCMyTk
+Org --> UCCrud
+Org --> UCDelete
+Org --> UCReduceCap
+Org --> UCCat
+Org --> UCCancel
+Org --> UCSeatCfg
+Org --> UCPub
+Org --> UCVal
+Org --> UCRep
+Org --> UCSub
+Admin --> UCAppr
+Admin --> UCUsr
+Admin --> UCMon
+Sched --> UCRel
+UCProc -- Pay_
+UCSubPay -- Pay_
+UCRefund -- Pay_
+UCMail1 -- Mail
+UCMail2 -- Mail
+UCMap -- Maps
+UCGeo -- Maps
+Client --|> User
+Org --|> User
+Admin --|> User
+UCDetail ..> UCMap : <<include>>
+UCReg ..> UCMail1 : <<include>>
+UCRes ..> UCSeat : <<include>>
+UCPay ..> UCStart : <<include>>
+UCPay ..> UCProc : <<include>>
+UCIssue ..> UCMail2 : <<include>>
+UCCrud ..> UCGeo : <<include>>
+UCCancel ..> UCRefund : <<include>>
+UCPub ..> UCChk : <<include>>
+UCSub ..> UCSubPay : <<include>>
+UCRel ..> UCRes : <<extend>>
+UCRejRes ..> UCRes : <<extend>>
+UCRejPay ..> UCPay : <<extend>>
+UCIssue ..> UCPay : <<extend>>
+UCFail ..> UCPay : <<extend>>
+UCRef ..> UCVal : <<extend>>
+@enduml

@@ -1,0 +1,256 @@
+@startuml ElideEvents_Domain
+title Elide Events – Diagrama de clase a domeniului (v7)
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+package "Identitate și organizatori" #F2F6FB {
+  abstract class UserAccount as "UserAccount" {
+    userId : Integer
+    email, firstName, lastName : String
+    role : UserRole
+    status : AccountStatus
+    isActive() : boolean
+    țintă: passwordHash, phone,
+    emailVerified, phoneVerified,
+    createdAt, updatedAt, deletedAt
+  }
+  class Participant as "Participant" <<țintă>> {
+    în cod: role = PARTICIPANT
+    țintă: ParticipantProfile
+  }
+  class Organizer as "Organizer" <<țintă>> {
+    în cod: role = ORGANIZER
+    țintă: OrganizerProfile
+  }
+  class Administrator as "Administrator" <<țintă>> {
+    în cod: role = ADMINISTRATOR
+    țintă: AdminProfile
+  }
+  class Company as "Company" <<țintă>> {
+    legalName, tradeName
+    registrationNumber, taxNumber
+    country, city, address, postalCode
+    phone, email, website
+  }
+  class OrgVer as "OrganizerVerification" <<țintă>> {
+    status : PENDING | UNDER_REVIEW |
+    APPROVED | REJECTED
+    submittedAt, reviewedAt
+    reviewedBy, rejectionReason, notes
+  }
+}
+package "Abonamente (țintă)" #F5F5F5 {
+  class Plan as "SubscriptionPlan" <<țintă>> {
+    name, description
+    code : FREE_TRIAL | MONTHLY
+    price, currency, interval
+    active, externalPriceId
+  }
+  class OrgSub as "OrganizerSubscription" <<țintă>> {
+    status : TRIAL | ACTIVE | PAST_DUE |
+    GRACE_PERIOD | SUSPENDED |
+    CANCELLED | EXPIRED
+    startedAt, cancelledAt
+    currentPeriodStart / End
+    gracePeriodUntil, externalIds
+  }
+}
+package "Evenimente" #FFF8EA {
+  class Event as "Event" <<agregat rădăcină>> {
+    eventId, organizerId : Integer
+    title, description : String
+    status : EventStatus
+    startAt, endAt, publishedAt
+    basePrice : BigDecimal
+    /availableCount, heldCount,
+    soldCount, blockedCount
+    /capacity : int  (fără locuri BLOCKED)
+    /occupancyRate : BigDecimal
+    addTicketType(), addEventSeat()
+    isScheduleValid(), isStructureValid()
+    țintă: slug, category, visibility,
+    salesStartAt, salesEndAt, currency,
+    createdAt, updatedAt, deletedAt
+  }
+  class TicketType as "TicketType" {
+    ticketTypeId : Integer
+    name : String
+    price : BigDecimal
+    țintă: description, currency, quantity,
+    soldQuantity, saleStart/End, active
+  }
+  class EventSeat as "EventSeat" {
+    eventSeatId, seatId : Integer
+    rowLabel, label : String
+    status : SeatStatus
+    price : BigDecimal
+    holdId : Integer
+    heldUntil : LocalDateTime
+    isAvailable() : boolean
+    țintă: eventId
+  }
+  class SalesView as "EventSalesView" <<view>> {
+    capacity, available, held, sold
+    scanned, notAttended
+    grossRevenue, occupancyRate
+    țintă: cancelled, taxes, netRevenue
+  }
+}
+package "Locații și săli" #F1F8F1 {
+  class Venue as "Venue" {
+    venueId : Integer
+    name, address, city : String
+    latitude, longitude : Double
+    țintă: country, placeId
+  }
+  class Hall as "Hall" <<agregat rădăcină>> {
+    hallId : Integer
+    name : String
+    addSeat()
+    /capacity : int
+    țintă: mapType, mapImageUrl,
+    width, height
+  }
+  class Seat as "Seat" {
+    seatId : Integer
+    rowLabel : String
+    seatNumber : int
+    accessible, active : boolean
+    /label : String
+    țintă: x, y, zone, seatType
+  }
+}
+package "Blocare, comandă, plată, bilet" #FDF3F0 {
+  class SeatHold as "SeatHold" <<agregat rădăcină>> {
+    holdId, userId, eventId
+    createdAt, expiresAt
+    status : HoldStatus
+    isExpiredAt(now) : boolean
+    țintă: updatedAt
+  }
+  class SeatHoldItem as "SeatHoldItem" {
+    itemId, eventSeatId : Integer
+  }
+  class Order as "Order  (orders)" <<agregat rădăcină>> {
+    orderId, userId, eventId, holdId
+    status : OrderStatus
+    total : BigDecimal
+    createdAt, expiresAt, paidAt
+    țintă: subtotal, serviceFee, discount,
+    tax, currency, cancelledAt
+  }
+  class OrderItem as "OrderItem" {
+    orderItemId, eventSeatId
+    seatLabel, ticketTypeName
+    unitPrice : BigDecimal
+    țintă: ticketTypeId, quantity, totalPrice
+  }
+  class Payment as "Payment" <<țintă>> {
+    provider, providerPaymentId
+    amount, currency, status
+    paymentMethod, failureReason
+    paidAt, failedAt
+  }
+  class Ticket as "Ticket" {
+    ticketId, orderId, eventId, userId
+    eventSeatId : Integer
+    seatLabel, ticketTypeName
+    ticketCode, qrToken : String
+    status : TicketStatus
+    issuedAt, usedAt
+    markUsed()
+    țintă: orderItemId, ticketTypeId,
+    cancelledAt
+  }
+  class Scan as "TicketScan" <<țintă>> {
+    scannedBy, scannedAt
+    result : TicketScanResult
+    deviceId, ipAddress
+  }
+  class ValView as "TicketValidationView" <<view>> {
+    result : TicketScanResult
+    ticketId, seatLabel, ticketTypeName
+  }
+}
+enum UserRole {
+  PARTICIPANT
+  ORGANIZER
+  ADMINISTRATOR
+}
+enum AccountStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  DELETED
+  REJECTED
+}
+enum EventStatus {
+  DRAFT
+  PENDING_PUBLICATION
+  PUBLISHED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  DELETED
+}
+enum SeatStatus {
+  AVAILABLE
+  HELD
+  SOLD
+  BLOCKED
+}
+enum HoldStatus {
+  ACTIVE
+  EXPIRED
+  CONVERTED
+  CANCELLED
+}
+enum OrderStatus {
+  PENDING
+  PAYMENT_PROCESSING
+  PAID
+  FAILED
+  EXPIRED
+  CANCELLED
+  REFUNDED
+}
+enum TicketStatus {
+  ISSUED
+  USED
+  CANCELLED
+  REFUNDED
+  EXPIRED
+}
+enum TicketScanResult {
+  VALID
+  ALREADY_USED
+  INVALID
+  WRONG_EVENT
+  CANCELLED
+}
+Participant "" --|> "" UserAccount
+Organizer "" --|> "" UserAccount
+Administrator "" --|> "" UserAccount
+Organizer "1" -- "1" Company
+Organizer "1" -- "0..1" OrgVer
+Administrator "0..*" -- "0..*" OrgVer : analizează
+Organizer "1" -- "0..*" OrgSub
+Plan "1" -- "0..*" OrgSub
+Event "0..*" ..> "1" Organizer : organizerId
+Event "1" *-- "1..*" TicketType
+Event "1" *-- "1..*" EventSeat
+Event "0..*" --> "1" Hall
+Hall "0..*" --> "1" Venue
+Hall "1" *-- "1..*" Seat
+EventSeat "0..*" ..> "1" Seat : seatId
+EventSeat "0..*" --> "1" TicketType
+SeatHold "1" *-- "1..*" SeatHoldItem
+SeatHoldItem "0..*" ..> "1" EventSeat : eventSeatId
+Order "1" *-- "1..*" OrderItem
+Order "0..*" ..> "1" SeatHold : holdId
+OrderItem "0..*" ..> "1" EventSeat : eventSeatId
+Order "1" -- "0..*" Payment
+OrderItem "1" -- "0..1" Ticket : generează
+Ticket "1" -- "0..*" Scan
+SalesView "" ..> "" Event
+ValView "" ..> "" Ticket
+@enduml

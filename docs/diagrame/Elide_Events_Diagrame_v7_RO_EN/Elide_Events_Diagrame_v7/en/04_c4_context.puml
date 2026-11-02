@@ -1,0 +1,17 @@
+@startuml
+!include <C4/C4_Context>
+title Elide Events – C4 level 1: System context (v7)
+Person(client,"Participant","Searches, holds seats 10 min, pays, receives QR tickets")
+Person(org,"Organizer","Events, QR validation, reports; FREE_TRIAL / MONTHLY")
+Person(admin,"Administrator","Approves organizers, users, KPIs, audit")
+System(elide,"Elide Events","SaaS ticketing platform")
+System_Ext(pay,"Stripe","Test Mode, Billing, webhook")
+System_Ext(mail,"SendGrid","Email")
+System_Ext(maps,"Google Maps Platform","Maps JS, Places, Geocoding")
+Rel(client,elide,"Uses","HTTPS")
+Rel(org,elide,"Uses","HTTPS")
+Rel(admin,elide,"Uses","HTTPS")
+Rel(elide,pay,"Payments and webhook","HTTPS")
+Rel(elide,mail,"Sends emails","HTTPS")
+Rel(elide,maps,"Map and geocoding","HTTPS")
+@enduml

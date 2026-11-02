@@ -1,0 +1,17 @@
+@startuml
+!include <C4/C4_Context>
+title Elide Events – C4 nivel 1: Context (v7)
+Person(client,"Participant","Caută, blochează locuri 10 min, plătește, primește bilete QR")
+Person(org,"Organizator","Evenimente, validare QR, rapoarte; FREE_TRIAL / MONTHLY")
+Person(admin,"Administrator","Aprobă organizatori, utilizatori, KPI, audit")
+System(elide,"Elide Events","Platformă SaaS de ticketing")
+System_Ext(pay,"Stripe","Test Mode, Billing, webhook")
+System_Ext(mail,"SendGrid","Email")
+System_Ext(maps,"Google Maps Platform","Maps JS, Places, Geocoding")
+Rel(client,elide,"Folosește","HTTPS")
+Rel(org,elide,"Folosește","HTTPS")
+Rel(admin,elide,"Folosește","HTTPS")
+Rel(elide,pay,"Plăți și webhook","HTTPS")
+Rel(elide,mail,"Trimite emailuri","HTTPS")
+Rel(elide,maps,"Hartă și geocodare","HTTPS")
+@enduml
