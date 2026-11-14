@@ -471,7 +471,7 @@ mvn clean test
   * **Caching & Rate Limiting:** Redis pentru stocarea rapidă a inventarului de locuri și prevenirea atacurilor de tip DoS.
   * **Frontend Client & Scanner:** Aplicație web SPA dezvoltată în React (interfață de selecție interactivă a sălii, panou organizator și scanner QR mobil pentru personalul de la porțile de acces).
 
-
+---
 
 # Elide Events – Backend (Sprint 3: Spring Data JPA / PostgreSQL)
 
@@ -540,6 +540,19 @@ Sprint 3 = persistență cu **Spring Data JPA**: interfețe care extind `JpaRepo
   (un singur VALID chiar dacă 20 de porți scanează simultan). `createOrder` verifică că locurile din hold sunt încă HELD de acel hold.
   Cazurile „refuz dar păstrăm efectul” (hold expirat la `startPayment`/`createOrder`/`confirmPayment`) fac commit, apoi aruncă excepția.
 - Teste noi: `Test8_JpaRepositoriesTest`, `Test9_TransactionIntegrityTest`; Test1–7 adaptate (locurile se adresează prin poziție, nu prin id fix).
+
+## Managementul Proiectului & Documentare Trello
+
+Planificarea, urmărirea task-urilor și colaborarea din cadrul echipei pentru **Sprintul 3** s-au desfășurat prin intermediul platformei **Trello**:
+
+* **Organizare pe Coloane Agile/Scrum:**
+  * **Product Backlog:** Cerințele de persistență extrase din specificațiile proiectului (`Elide Events Backend`) și din cerințele de laborator/curs (DAM - Spring Data JPA & PostgreSQL).
+  * **Sprint Backlog (Sprint 3):** Împărțirea pe sarcini atomice: configurarea bazei de date PostgreSQL și a pool-ului HikariCP, maparea celor 12 entități și a enum-urilor JPA, implementarea `@EntityListeners` pentru audit și calcul automat, crearea repository-urilor cu locking pesimist, managementul tranzacțional (`TransactionTemplate`) și suitele de teste de integrare.
+  * **In Progress / In Review:** Migrarea de la repository-urile `InMemory` din Sprint 2 la JPA și validarea deciziilor de mapare (ex. evitarea cuvântului rezervat SQL prin `@Entity(name = "SalesOrder")` / `@Table(name = "orders")`, strategii de fetch `SUBSELECT`, propagare `REQUIRED` și mecanisme `PESSIMISTIC_WRITE`).
+  * **Done (Acceptance Criteria Verified):** Toate cele 9 suite de teste (`Test1`–`Test9`) trec cu succes (`mvn test`) pe baza de date PostgreSQL (`eliade_event`), validând atât regulile de domeniu din sprinturile anterioare, cât și integritatea tranzacțională, cascadarea agregatelor și concurența.
+
+🔗 **Link Board Trello:** https://trello.com/b/XDiEJMTZ/elide-events-backend-sprint-3-jpa-postgresql
+---
 
 ## Ce rămâne pentru sprinturile următoare
 - Controllere REST, RBAC pe server, Stripe + webhook, Redis, React.
