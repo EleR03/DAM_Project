@@ -50,9 +50,7 @@ public class Test5_ConcurrencyTest extends AbstractDomainTest {
 	}
 
 	private long activeHoldsOf(Integer eventId) {
-		return seatHoldRepository.toCollection().stream()
-				.filter(h -> h.getEventId().equals(eventId) && h.getStatus() == HoldStatus.ACTIVE)
-				.count();
+		return seatHoldRepository.findByEventIdAndStatus(eventId, HoldStatus.ACTIVE).size();
 	}
 
 	/* 200 threads fight for ONE seat: exactly one wins, 199 get SEAT_NO_LONGER_AVAILABLE. */
@@ -65,7 +63,7 @@ public class Test5_ConcurrencyTest extends AbstractDomainTest {
 		for (UserAccount user : users) {
 			tasks.add(() -> {
 				try {
-					workflow.holdSeats(user.getUserId(), eventId, seats(1));
+					workflow.holdSeats(user.getUserId(), eventId, seats(eventId, 1));
 					return true;
 				} catch (SeatNoLongerAvailableException ex) {
 					return false;
@@ -75,7 +73,7 @@ public class Test5_ConcurrencyTest extends AbstractDomainTest {
 		List<Boolean> results = race(tasks);
 
 		assertEquals(1, count(results));
-		assertEquals(SeatStatus.HELD, event(eventId).findEventSeat(1).getStatus());
+		assertEquals(SeatStatus.HELD, seat(eventId, 1).getStatus());
 		assertEquals(1, activeHoldsOf(eventId));
 	}
 
@@ -91,7 +89,7 @@ public class Test5_ConcurrencyTest extends AbstractDomainTest {
 			Integer seatId = (i % 50) + 1;
 			tasks.add(() -> {
 				try {
-					Integer holdId = workflow.holdSeats(userId, eventId, seats(seatId));
+					Integer holdId = workflow.holdSeats(userId, eventId, seats(eventId, seatId));
 					Integer orderId = workflow.createOrder(holdId);
 					workflow.confirmPayment(orderId);
 					return true;
@@ -135,7 +133,7 @@ public class Test5_ConcurrencyTest extends AbstractDomainTest {
 		List<Callable<Boolean>> tasks = new ArrayList<>();
 		for (int i = 0; i < users.size(); i++) {
 			Integer userId = users.get(i).getUserId();
-			List<Integer> wanted = (i == 0) ? seats(1, 2, 3, 4, 5) : seats((i % 8) + 1);
+			List<Integer> wanted = (i == 0) ? seats(eventId, 1, 2, 3, 4, 5) : seats(eventId, (i % 8) + 1);
 			tasks.add(() -> {
 				try {
 					workflow.holdSeats(userId, eventId, wanted);
@@ -161,23 +159,21 @@ public class Test5_ConcurrencyTest extends AbstractDomainTest {
 		assertEquals(bigUserWon ? 3 : 8, singleWinners);
 
 		// all-or-nothing for the 5-seat user: one hold with exactly 5 seats, or no hold at all
-		List<SeatHold> bigUserHolds = seatHoldRepository.toCollection().stream()
-				.filter(h -> h.getEventId().equals(eventId) && h.getUserId().equals(bigUserId))
+		List<SeatHold> bigUserHolds = seatHoldRepository.findByEventIdAndStatus(eventId, HoldStatus.ACTIVE).stream()
+				.filter(h -> h.getUserId().equals(bigUserId))
 				.collect(Collectors.toList());
 		if (bigUserWon) {
 			assertEquals(1, bigUserHolds.size());
 			assertEquals(5, bigUserHolds.get(0).getItems().size());
 			for (int seatId = 1; seatId <= 5; seatId++)
-				assertEquals(bigUserHolds.get(0).getHoldId(), event.findEventSeat(seatId).getHoldId());
+				assertEquals(bigUserHolds.get(0).getHoldId(), event.getEventSeats().get(seatId - 1).getHoldId());
 		} else {
 			assertTrue(bigUserHolds.isEmpty());
 		}
 
 		// no seat is held by two reservations: every hold owns distinct seats, holds are consistent with seats
 		Set<Integer> seatsInActiveHolds = new HashSet<>();
-		for (SeatHold hold : seatHoldRepository.toCollection()) {
-			if (!hold.getEventId().equals(eventId) || hold.getStatus() != HoldStatus.ACTIVE)
-				continue;
+		for (SeatHold hold : seatHoldRepository.findByEventIdAndStatus(eventId, HoldStatus.ACTIVE)) {
 			hold.getItems().forEach(item -> assertTrue(seatsInActiveHolds.add(item.getEventSeatId()),
 					"seat " + item.getEventSeatId() + " is held by two reservations"));
 		}
@@ -201,9 +197,9 @@ public class Test5_ConcurrencyTest extends AbstractDomainTest {
 	public void twentyGatesScanningTheSameTicketOnlyOneIsValid() throws Exception {
 		Integer eventId = newPublishedEvent(1, 4);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
-		Integer orderId = workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seats(1)));
+		Integer orderId = workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 1)));
 		Integer ticketId = workflow.confirmPayment(orderId).get(0);
-		String qrToken = ticketRepository.getById(ticketId).getQrToken();
+		String qrToken = ticketRepository.getByIdOrNull(ticketId).getQrToken();
 
 		List<Callable<Boolean>> tasks = new ArrayList<>();
 		for (int gate = 0; gate < 20; gate++)
@@ -212,7 +208,7 @@ public class Test5_ConcurrencyTest extends AbstractDomainTest {
 
 		assertEquals(1, count(results));                                        // exactly one VALID
 		assertEquals(19, results.stream().filter(r -> !r).count());             // 19 ALREADY_USED
-		assertEquals(TicketStatus.USED, ticketRepository.getById(ticketId).getStatus());
+		assertEquals(TicketStatus.USED, ticketRepository.getByIdOrNull(ticketId).getStatus());
 		assertEquals(1, workflow.getEventSalesReport(eventId).getScannedTickets());
 	}
 
@@ -221,12 +217,12 @@ public class Test5_ConcurrencyTest extends AbstractDomainTest {
 	public void everyTicketAdmitsExactlyOnePersonEvenWhenManyTicketsAreScannedAtOnce() throws Exception {
 		Integer eventId = newPublishedEvent(1, 8);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
-		Integer orderId = workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seats(1, 2, 3, 4, 5)));
+		Integer orderId = workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 1, 2, 3, 4, 5)));
 		List<Integer> ticketIds = workflow.confirmPayment(orderId);
 
 		List<Callable<Boolean>> tasks = new ArrayList<>();
 		for (Integer ticketId : ticketIds) {
-			String qrToken = ticketRepository.getById(ticketId).getQrToken();
+			String qrToken = ticketRepository.getByIdOrNull(ticketId).getQrToken();
 			for (int gate = 0; gate < 20; gate++)
 				tasks.add(() -> scan(qrToken, eventId));
 		}

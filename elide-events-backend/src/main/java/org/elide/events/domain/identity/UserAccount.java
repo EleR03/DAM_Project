@@ -3,6 +3,7 @@ package org.elide.events.domain.identity;
 import java.io.Serializable;
 
 import javax.persistence.Entity;
+import javax.persistence.EntityListeners;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.GeneratedValue;
@@ -11,13 +12,15 @@ import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 
+import org.elide.events.domain.audit.DomainAuditListener;
+
 /** Entity: user account (participant, organizer or administrator). */
 @Entity
+@EntityListeners(DomainAuditListener.class)
 public class UserAccount implements Serializable, Comparable<UserAccount> {
 	private static final long serialVersionUID = 1L;
 
 	@Id @GeneratedValue
-	@NotNull(message = "UserId is required!")
 	private Integer userId;
 
 	@NotBlank(message = "Email is required!")

@@ -11,9 +11,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
-/** Spring App Configuration class: scans domain services and defines infrastructure beans. */
+/**
+ * Spring App Configuration class: scans the domain services and the infrastructure and defines the validator and the
+ * clock. The JPA infrastructure (DataSource, EntityManagerFactory, transaction manager, Spring Data repositories) is
+ * configured by Spring Boot from application.properties.
+ */
 @Configuration
-@ComponentScan(basePackages = { "org.elide.events.domain.services" })
+@ComponentScan(basePackages = { "org.elide.events.domain.services", "org.elide.events.infrastructure" })
 public class AppScanConfig {
 	private static Logger logger = Logger.getLogger(AppScanConfig.class.getName());
 

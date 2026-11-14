@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.ManyToOne;
 import javax.validation.constraints.DecimalMin;
 import javax.validation.constraints.NotNull;
 
@@ -26,6 +27,10 @@ public class OrderItem implements Serializable {
 	@DecimalMin(value = "0.00", message = "Unit price must not be negative!")
 	private BigDecimal unitPrice;
 
+	// back-reference to the aggregate root (owning side of the Order.items relationship)
+	@ManyToOne
+	private Order order;
+
 	public OrderItem() {
 		super();
 	}
@@ -40,6 +45,8 @@ public class OrderItem implements Serializable {
 		this.unitPrice = unitPrice;
 	}
 
+	public Order getOrder() { return order; }
+	public void setOrder(Order order) { this.order = order; }
 	public Integer getOrderItemId() { return orderItemId; }
 	public void setOrderItemId(Integer orderItemId) { this.orderItemId = orderItemId; }
 	public Integer getEventSeatId() { return eventSeatId; }

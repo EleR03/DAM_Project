@@ -5,7 +5,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Import;
 
-/** Spring Boot entry point. Sprint 2 has no web layer and no database yet. */
+/** Spring Boot entry point. Sprint 3: no web layer; persistence through Spring Data JPA (application.properties). */
 @SpringBootApplication
 @Import(AppScanConfig.class)
 public class ElideEventsApplication {

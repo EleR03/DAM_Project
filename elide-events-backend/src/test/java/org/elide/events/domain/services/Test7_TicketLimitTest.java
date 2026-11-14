@@ -19,14 +19,6 @@ public class Test7_TicketLimitTest extends AbstractDomainTest {
 
 	private static final int MAX = EventTicketingBusinessWorkflowServiceImpl.MAX_TICKETS_PER_USER;
 
-	/** Seat ids from..from+count-1 */
-	private List<Integer> seatRange(int from, int count) {
-		List<Integer> ids = new ArrayList<>();
-		for (int i = 0; i < count; i++)
-			ids.add(from + i);
-		return ids;
-	}
-
 	private long heldSeats(Integer eventId) {
 		Event event = event(eventId);
 		return event.getEventSeats().stream().filter(s -> s.getStatus() == SeatStatus.HELD).count();
@@ -37,7 +29,7 @@ public class Test7_TicketLimitTest extends AbstractDomainTest {
 		Integer eventId = newPublishedEvent(5, 10);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
 
-		workflow.holdSeats(buyer.getUserId(), eventId, seatRange(1, MAX));
+		workflow.holdSeats(buyer.getUserId(), eventId, seatRange(eventId, 1, MAX));
 
 		assertEquals(MAX, heldSeats(eventId));
 	}
@@ -48,7 +40,7 @@ public class Test7_TicketLimitTest extends AbstractDomainTest {
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
 
 		TicketLimitExceededException ex = assertThrows(TicketLimitExceededException.class,
-				() -> workflow.holdSeats(buyer.getUserId(), eventId, seatRange(1, MAX + 1)));
+				() -> workflow.holdSeats(buyer.getUserId(), eventId, seatRange(eventId, 1, MAX + 1)));
 
 		assertTrue(ex.getMessage().contains("TICKET_LIMIT_EXCEEDED"));
 		assertEquals(0, heldSeats(eventId));
@@ -58,11 +50,11 @@ public class Test7_TicketLimitTest extends AbstractDomainTest {
 	public void theLimitIsCumulativeAcrossHolds() {
 		Integer eventId = newPublishedEvent(5, 10);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
-		workflow.holdSeats(buyer.getUserId(), eventId, seatRange(1, MAX - 2));
+		workflow.holdSeats(buyer.getUserId(), eventId, seatRange(eventId, 1, MAX - 2));
 
 		assertThrows(TicketLimitExceededException.class,
-				() -> workflow.holdSeats(buyer.getUserId(), eventId, seatRange(20, 3)));
-		workflow.holdSeats(buyer.getUserId(), eventId, seatRange(20, 2)); // reaches exactly MAX
+				() -> workflow.holdSeats(buyer.getUserId(), eventId, seatRange(eventId, 20, 3)));
+		workflow.holdSeats(buyer.getUserId(), eventId, seatRange(eventId, 20, 2)); // reaches exactly MAX
 
 		assertEquals(MAX, heldSeats(eventId));
 	}
@@ -71,21 +63,21 @@ public class Test7_TicketLimitTest extends AbstractDomainTest {
 	public void alreadyBoughtTicketsCountTowardTheLimit() {
 		Integer eventId = newPublishedEvent(5, 10);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
-		Integer orderId = workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seatRange(1, MAX)));
+		Integer orderId = workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seatRange(eventId, 1, MAX)));
 		workflow.confirmPayment(orderId);
 
 		assertThrows(TicketLimitExceededException.class,
-				() -> workflow.holdSeats(buyer.getUserId(), eventId, seats(30)));
+				() -> workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 30)));
 	}
 
 	@Test
 	public void releasedSeatsFreeTheQuotaAgain() {
 		Integer eventId = newPublishedEvent(5, 10);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
-		Integer orderId = workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seatRange(1, MAX)));
+		Integer orderId = workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seatRange(eventId, 1, MAX)));
 
 		workflow.failPayment(orderId); // payment failed: seats released
-		workflow.holdSeats(buyer.getUserId(), eventId, seatRange(1, MAX)); // allowed again
+		workflow.holdSeats(buyer.getUserId(), eventId, seatRange(eventId, 1, MAX)); // allowed again
 
 		assertEquals(MAX, heldSeats(eventId));
 	}
@@ -94,10 +86,10 @@ public class Test7_TicketLimitTest extends AbstractDomainTest {
 	public void expiredHoldFreesTheQuotaAgain() {
 		Integer eventId = newPublishedEvent(5, 10);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
-		workflow.holdSeats(buyer.getUserId(), eventId, seatRange(1, MAX));
+		workflow.holdSeats(buyer.getUserId(), eventId, seatRange(eventId, 1, MAX));
 
 		workflow.expireHolds(java.time.LocalDateTime.now().plusMinutes(11));
-		workflow.holdSeats(buyer.getUserId(), eventId, seatRange(1, MAX));
+		workflow.holdSeats(buyer.getUserId(), eventId, seatRange(eventId, 1, MAX));
 
 		assertEquals(MAX, heldSeats(eventId));
 	}
@@ -108,11 +100,11 @@ public class Test7_TicketLimitTest extends AbstractDomainTest {
 		Integer otherEventId = newPublishedEvent(5, 10);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
 		UserAccount otherBuyer = newUser(UserRole.PARTICIPANT);
-		workflow.holdSeats(buyer.getUserId(), eventId, seatRange(1, MAX));
+		workflow.holdSeats(buyer.getUserId(), eventId, seatRange(eventId, 1, MAX));
 
 		// same user, another event: allowed; another user, same event: allowed
-		workflow.holdSeats(buyer.getUserId(), otherEventId, seatRange(1, MAX));
-		workflow.holdSeats(otherBuyer.getUserId(), eventId, seatRange(MAX + 1, MAX));
+		workflow.holdSeats(buyer.getUserId(), otherEventId, seatRange(otherEventId, 1, MAX));
+		workflow.holdSeats(otherBuyer.getUserId(), eventId, seatRange(eventId, MAX + 1, MAX));
 
 		assertEquals(2 * MAX, heldSeats(eventId));
 	}
@@ -127,7 +119,7 @@ public class Test7_TicketLimitTest extends AbstractDomainTest {
 			Integer seatId = i + 1;
 			tasks.add(() -> {
 				try {
-					workflow.holdSeats(buyer.getUserId(), eventId, seats(seatId));
+					workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, seatId));
 					return true;
 				} catch (TicketLimitExceededException ex) {
 					return false;

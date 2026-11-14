@@ -33,6 +33,10 @@ public class EventSeat implements Serializable {
 	@ManyToOne
 	private TicketType ticketType;
 
+	// back-reference to the aggregate root (owning side of the Event.eventSeats relationship)
+	@ManyToOne
+	private Event event;
+
 	private Integer holdId;
 	private LocalDateTime heldUntil;
 
@@ -85,6 +89,8 @@ public class EventSeat implements Serializable {
 		this.status = SeatStatus.BLOCKED;
 	}
 
+	public Event getEvent() { return event; }
+	public void setEvent(Event event) { this.event = event; }
 	public Integer getEventSeatId() { return eventSeatId; }
 	public void setEventSeatId(Integer eventSeatId) { this.eventSeatId = eventSeatId; }
 	public Integer getSeatId() { return seatId; }

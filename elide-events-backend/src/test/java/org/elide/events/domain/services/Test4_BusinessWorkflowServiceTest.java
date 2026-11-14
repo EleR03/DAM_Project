@@ -82,7 +82,7 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 	public void publishedEventWithSoldSeatsCannotBeRescheduled() {
 		Integer eventId = newPublishedEvent(1, 3);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
-		Integer orderId = workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seats(1)));
+		Integer orderId = workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 1)));
 		workflow.confirmPayment(orderId);
 
 		assertThrows(BusinessRuleViolationException.class,
@@ -105,7 +105,7 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 		Integer eventId = newDraftEvent(1, 3);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
 		assertThrows(BusinessRuleViolationException.class,
-				() -> workflow.holdSeats(buyer.getUserId(), eventId, seats(1)));
+				() -> workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 1)));
 	}
 
 	@Test
@@ -113,15 +113,14 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 		Integer eventId = newPublishedEvent(3, 4);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
 
-		Integer holdId = workflow.holdSeats(buyer.getUserId(), eventId, seats(1, 2, 3));
+		Integer holdId = workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 1, 2, 3));
 
-		Event event = event(eventId);
-		assertEquals(SeatStatus.HELD, event.findEventSeat(1).getStatus());
-		assertEquals(SeatStatus.HELD, event.findEventSeat(3).getStatus());
-		assertEquals(SeatStatus.AVAILABLE, event.findEventSeat(4).getStatus());
-		assertEquals(HoldStatus.ACTIVE, seatHoldRepository.getById(holdId).getStatus());
-		assertEquals(10, java.time.Duration.between(seatHoldRepository.getById(holdId).getCreatedAt(),
-				seatHoldRepository.getById(holdId).getExpiresAt()).toMinutes());
+		assertEquals(SeatStatus.HELD, seat(eventId, 1).getStatus());
+		assertEquals(SeatStatus.HELD, seat(eventId, 3).getStatus());
+		assertEquals(SeatStatus.AVAILABLE, seat(eventId, 4).getStatus());
+		assertEquals(HoldStatus.ACTIVE, seatHoldRepository.getByIdOrNull(holdId).getStatus());
+		assertEquals(10, java.time.Duration.between(seatHoldRepository.getByIdOrNull(holdId).getCreatedAt(),
+				seatHoldRepository.getByIdOrNull(holdId).getExpiresAt()).toMinutes());
 	}
 
 	@Test
@@ -129,14 +128,14 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 		Integer eventId = newPublishedEvent(3, 4);
 		UserAccount userA = newUser(UserRole.PARTICIPANT);
 		UserAccount userB = newUser(UserRole.PARTICIPANT);
-		workflow.holdSeats(userA.getUserId(), eventId, seats(1));
+		workflow.holdSeats(userA.getUserId(), eventId, seats(eventId, 1));
 
 		SeatNoLongerAvailableException ex = assertThrows(SeatNoLongerAvailableException.class,
-				() -> workflow.holdSeats(userB.getUserId(), eventId, seats(2, 1)));
+				() -> workflow.holdSeats(userB.getUserId(), eventId, seats(eventId, 2, 1)));
 
 		assertTrue(ex.getMessage().contains("SEAT_NO_LONGER_AVAILABLE"));
 		// all-or-nothing: seat 2 was NOT held by the failed request
-		assertEquals(SeatStatus.AVAILABLE, event(eventId).findEventSeat(2).getStatus());
+		assertEquals(SeatStatus.AVAILABLE, seat(eventId, 2).getStatus());
 	}
 
 	@Test
@@ -157,13 +156,13 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 		pool.shutdown();
 
 		assertNotEquals(okA, okB, "exactly one user must obtain the seat");
-		assertEquals(SeatStatus.HELD, event(eventId).findEventSeat(1).getStatus());
+		assertEquals(SeatStatus.HELD, seat(eventId, 1).getStatus());
 	}
 
 	private Boolean tryHold(CountDownLatch start, Integer userId, Integer eventId) throws InterruptedException {
 		start.await();
 		try {
-			workflow.holdSeats(userId, eventId, seats(1));
+			workflow.holdSeats(userId, eventId, seats(eventId, 1));
 			return true;
 		} catch (SeatNoLongerAvailableException ex) {
 			return false;
@@ -177,30 +176,30 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 		Integer eventId = newPublishedEvent(2, 5);
 		UserAccount userA = newUser(UserRole.PARTICIPANT);
 		UserAccount userB = newUser(UserRole.PARTICIPANT);
-		Integer holdId = workflow.holdSeats(userA.getUserId(), eventId, seats(1, 2));
+		Integer holdId = workflow.holdSeats(userA.getUserId(), eventId, seats(eventId, 1, 2));
 		Integer orderId = workflow.createOrder(holdId);
 
 		int expired = workflow.expireHolds(LocalDateTime.now().plusMinutes(11));
 
 		assertTrue(expired >= 1);
-		assertEquals(HoldStatus.EXPIRED, seatHoldRepository.getById(holdId).getStatus());
-		assertEquals(OrderStatus.EXPIRED, orderRepository.getById(orderId).getStatus());
-		assertEquals(SeatStatus.AVAILABLE, event(eventId).findEventSeat(1).getStatus());
+		assertEquals(HoldStatus.EXPIRED, seatHoldRepository.getByIdOrNull(holdId).getStatus());
+		assertEquals(OrderStatus.EXPIRED, orderRepository.getByIdOrNull(orderId).getStatus());
+		assertEquals(SeatStatus.AVAILABLE, seat(eventId, 1).getStatus());
 		// the seat can be taken again by someone else
-		workflow.holdSeats(userB.getUserId(), eventId, seats(1));
-		assertEquals(SeatStatus.HELD, event(eventId).findEventSeat(1).getStatus());
+		workflow.holdSeats(userB.getUserId(), eventId, seats(eventId, 1));
+		assertEquals(SeatStatus.HELD, seat(eventId, 1).getStatus());
 	}
 
 	@Test
 	public void holdStillValidBeforeTenMinutesIsNotExpired() {
 		Integer eventId = newPublishedEvent(1, 3);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
-		Integer holdId = workflow.holdSeats(buyer.getUserId(), eventId, seats(1));
+		Integer holdId = workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 1));
 
 		workflow.expireHolds(LocalDateTime.now().plusMinutes(5));
 
-		assertEquals(HoldStatus.ACTIVE, seatHoldRepository.getById(holdId).getStatus());
-		assertEquals(SeatStatus.HELD, event(eventId).findEventSeat(1).getStatus());
+		assertEquals(HoldStatus.ACTIVE, seatHoldRepository.getByIdOrNull(holdId).getStatus());
+		assertEquals(SeatStatus.HELD, seat(eventId, 1).getStatus());
 	}
 
 	/* ---------------- order + payment ---------------- */
@@ -210,20 +209,20 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 		Integer eventId = newPublishedEvent(3, 4); // 12 seats x 100.00
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
 
-		Integer holdId = workflow.holdSeats(buyer.getUserId(), eventId, seats(1, 2, 3));
+		Integer holdId = workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 1, 2, 3));
 		Integer orderId = workflow.createOrder(holdId);
 
-		Order order = orderRepository.getById(orderId);
+		Order order = orderRepository.getByIdOrNull(orderId);
 		assertEquals(OrderStatus.PENDING, order.getStatus());
 		assertEquals(new BigDecimal("300.00"), order.getTotal());
 
 		List<Integer> ticketIds = workflow.confirmPayment(orderId);
 
 		assertEquals(3, ticketIds.size());
-		assertEquals(OrderStatus.PAID, orderRepository.getById(orderId).getStatus());
-		assertEquals(HoldStatus.CONVERTED, seatHoldRepository.getById(holdId).getStatus());
-		assertEquals(SeatStatus.SOLD, event(eventId).findEventSeat(2).getStatus());
-		assertTrue(ticketRepository.getById(ticketIds.get(0)).getQrToken().length() >= 32);
+		assertEquals(OrderStatus.PAID, orderRepository.getByIdOrNull(orderId).getStatus());
+		assertEquals(HoldStatus.CONVERTED, seatHoldRepository.getByIdOrNull(holdId).getStatus());
+		assertEquals(SeatStatus.SOLD, seat(eventId, 2).getStatus());
+		assertTrue(ticketRepository.getByIdOrNull(ticketIds.get(0)).getQrToken().length() >= 32);
 
 		EventSalesView report = workflow.getEventSalesReport(eventId);
 		assertEquals(12, report.getCapacity());
@@ -239,22 +238,22 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 	public void failedPaymentReleasesSeats() {
 		Integer eventId = newPublishedEvent(1, 4);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
-		Integer holdId = workflow.holdSeats(buyer.getUserId(), eventId, seats(1, 2));
+		Integer holdId = workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 1, 2));
 		Integer orderId = workflow.createOrder(holdId);
 
 		workflow.failPayment(orderId);
 
-		assertEquals(OrderStatus.FAILED, orderRepository.getById(orderId).getStatus());
-		assertEquals(HoldStatus.CANCELLED, seatHoldRepository.getById(holdId).getStatus());
-		assertEquals(SeatStatus.AVAILABLE, event(eventId).findEventSeat(1).getStatus());
-		assertEquals(SeatStatus.AVAILABLE, event(eventId).findEventSeat(2).getStatus());
+		assertEquals(OrderStatus.FAILED, orderRepository.getByIdOrNull(orderId).getStatus());
+		assertEquals(HoldStatus.CANCELLED, seatHoldRepository.getByIdOrNull(holdId).getStatus());
+		assertEquals(SeatStatus.AVAILABLE, seat(eventId, 1).getStatus());
+		assertEquals(SeatStatus.AVAILABLE, seat(eventId, 2).getStatus());
 	}
 
 	@Test
 	public void cannotCreateOrderFromExpiredHold() {
 		Integer eventId = newPublishedEvent(1, 4);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
-		Integer holdId = workflow.holdSeats(buyer.getUserId(), eventId, seats(1));
+		Integer holdId = workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 1));
 		workflow.expireHolds(LocalDateTime.now().plusMinutes(11));
 
 		assertThrows(BusinessRuleViolationException.class, () -> workflow.createOrder(holdId));
@@ -264,7 +263,7 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 	public void paymentAfterExpiryDoesNotIssueTickets() {
 		Integer eventId = newPublishedEvent(1, 4);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
-		Integer orderId = workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seats(1)));
+		Integer orderId = workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 1)));
 		workflow.expireHolds(LocalDateTime.now().plusMinutes(11));
 
 		assertThrows(BusinessRuleViolationException.class, () -> workflow.confirmPayment(orderId));
@@ -275,7 +274,7 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 	public void orderCannotBePaidTwice() {
 		Integer eventId = newPublishedEvent(1, 4);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
-		Integer orderId = workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seats(1)));
+		Integer orderId = workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 1)));
 		workflow.confirmPayment(orderId);
 
 		assertThrows(BusinessRuleViolationException.class, () -> workflow.confirmPayment(orderId));
@@ -289,9 +288,9 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 		Integer eventId = newPublishedEvent(1, 4);
 		Integer otherEventId = newPublishedEvent(1, 4);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
-		Integer orderId = workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seats(1)));
+		Integer orderId = workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 1)));
 		Integer ticketId = workflow.confirmPayment(orderId).get(0);
-		String qr = ticketRepository.getById(ticketId).getQrToken();
+		String qr = ticketRepository.getByIdOrNull(ticketId).getQrToken();
 
 		assertEquals(TicketScanResult.INVALID, workflow.validateTicket("unknown-token", eventId).getResult());
 		assertEquals(TicketScanResult.WRONG_EVENT, workflow.validateTicket(qr, otherEventId).getResult());
@@ -312,11 +311,12 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 	public void cancelledTicketIsRejectedAtTheEntrance() {
 		Integer eventId = newPublishedEvent(1, 4);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
-		Integer orderId = workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seats(1)));
+		Integer orderId = workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 1)));
 		Integer ticketId = workflow.confirmPayment(orderId).get(0);
-		ticketRepository.getById(ticketId).setStatus(org.elide.events.domain.sales.TicketStatus.CANCELLED);
+		transactionManager.runInTransaction(() ->
+				ticketRepository.getByIdOrNull(ticketId).setStatus(org.elide.events.domain.sales.TicketStatus.CANCELLED));
 
-		String qr = ticketRepository.getById(ticketId).getQrToken();
+		String qr = ticketRepository.getByIdOrNull(ticketId).getQrToken();
 		assertEquals(TicketScanResult.CANCELLED, workflow.validateTicket(qr, eventId).getResult());
 	}
 
@@ -330,8 +330,7 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 
 	@Test
 	public void pendingOrganizerCanPrepareADraftButCannotPublish() {
-		UserAccount organizer = newUser(UserRole.ORGANIZER);
-		organizer.setStatus(AccountStatus.PENDING);
+		UserAccount organizer = newUser(UserRole.ORGANIZER, AccountStatus.PENDING);
 
 		Integer eventId = draftEventOf(organizer);
 
@@ -341,22 +340,20 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 
 	@Test
 	public void organizerCanPublishAfterAdministratorApproval() {
-		UserAccount organizer = newUser(UserRole.ORGANIZER);
-		organizer.setStatus(AccountStatus.PENDING);
+		UserAccount organizer = newUser(UserRole.ORGANIZER, AccountStatus.PENDING);
 		UserAccount admin = newUser(UserRole.ADMINISTRATOR);
 		Integer eventId = draftEventOf(organizer);
 
 		workflow.approveOrganizer(admin.getUserId(), organizer.getUserId());
 		workflow.publishEvent(eventId);
 
-		assertEquals(AccountStatus.ACTIVE, organizer.getStatus());
+		assertEquals(AccountStatus.ACTIVE, userRepository.getByIdOrNull(organizer.getUserId()).getStatus());
 		assertEquals(EventStatus.PUBLISHED, event(eventId).getStatus());
 	}
 
 	@Test
 	public void onlyAnAdministratorCanApproveAPendingOrganizer() {
-		UserAccount organizer = newUser(UserRole.ORGANIZER);
-		organizer.setStatus(AccountStatus.PENDING);
+		UserAccount organizer = newUser(UserRole.ORGANIZER, AccountStatus.PENDING);
 		UserAccount otherOrganizer = newUser(UserRole.ORGANIZER);
 		UserAccount participant = newUser(UserRole.PARTICIPANT);
 		UserAccount admin = newUser(UserRole.ADMINISTRATOR);
@@ -365,7 +362,7 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 				() -> workflow.approveOrganizer(otherOrganizer.getUserId(), organizer.getUserId()));
 		assertThrows(BusinessRuleViolationException.class,
 				() -> workflow.approveOrganizer(participant.getUserId(), organizer.getUserId()));
-		assertEquals(AccountStatus.PENDING, organizer.getStatus());
+		assertEquals(AccountStatus.PENDING, userRepository.getByIdOrNull(organizer.getUserId()).getStatus());
 
 		workflow.approveOrganizer(admin.getUserId(), organizer.getUserId());
 		// already approved: it is not PENDING anymore
@@ -377,7 +374,7 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 	public void suspendedOrganizerCannotCreateNorPublish() {
 		UserAccount organizer = newUser(UserRole.ORGANIZER);
 		Integer eventId = draftEventOf(organizer);
-		organizer.setStatus(AccountStatus.SUSPENDED);
+		changeStatus(organizer, AccountStatus.SUSPENDED);
 
 		assertThrows(BusinessRuleViolationException.class, () -> workflow.publishEvent(eventId));
 		assertThrows(BusinessRuleViolationException.class, () -> draftEventOf(organizer));
@@ -388,8 +385,15 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 	/** 3 rows x 4 seats: row A = VIP (seats 1..4), rows B and C = STANDARD (seats 5..12). */
 	private Integer publishedEventWithVipRow() {
 		Integer eventId = newDraftEvent(3, 4);
-		TicketType vip = event(eventId).addTicketType("VIP", new BigDecimal("250.00"));
-		event(eventId).assignTicketTypeToRow("A", vip);
+		// the aggregate is changed through its root, in ONE transaction: the new ticket type is inserted (cascade)
+		// and the seats of row A are updated to point to it
+		transactionManager.runInTransaction(() -> {
+			Event event = eventRepository.getByIdOrNull(eventId);
+			TicketType vip = event.addTicketType("VIP", new BigDecimal("250.00"));
+			// the new ticket type must be INSERTed before the seats can point to it
+			transactionManager.currentEntityManager().flush();
+			event.assignTicketTypeToRow("A", vip);
+		});
 		workflow.publishEvent(eventId);
 		return eventId;
 	}
@@ -399,8 +403,8 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 		Integer eventId = publishedEventWithVipRow();
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
 		UserAccount otherBuyer = newUser(UserRole.PARTICIPANT);
-		workflow.confirmPayment(workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seats(1)))); // A1 SOLD
-		workflow.holdSeats(otherBuyer.getUserId(), eventId, seats(2));                                           // A2 HELD
+		workflow.confirmPayment(workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 1)))); // A1 SOLD
+		workflow.holdSeats(otherBuyer.getUserId(), eventId, seats(eventId, 2));                                           // A2 HELD
 
 		// 1 sold + 1 held = 2 committed VIP seats
 		assertThrows(BusinessRuleViolationException.class, () -> workflow.reduceCategoryCapacity(eventId, "VIP", 1));
@@ -411,10 +415,10 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 		Integer blocked = workflow.reduceCategoryCapacity(eventId, "VIP", 2);
 
 		assertEquals(2, blocked);
-		assertEquals(SeatStatus.SOLD, event(eventId).findEventSeat(1).getStatus());
-		assertEquals(SeatStatus.HELD, event(eventId).findEventSeat(2).getStatus());
-		assertEquals(SeatStatus.BLOCKED, event(eventId).findEventSeat(3).getStatus());
-		assertEquals(SeatStatus.BLOCKED, event(eventId).findEventSeat(4).getStatus());
+		assertEquals(SeatStatus.SOLD, seat(eventId, 1).getStatus());
+		assertEquals(SeatStatus.HELD, seat(eventId, 2).getStatus());
+		assertEquals(SeatStatus.BLOCKED, seat(eventId, 3).getStatus());
+		assertEquals(SeatStatus.BLOCKED, seat(eventId, 4).getStatus());
 		assertEquals(10, event(eventId).getCapacity()); // 12 seats - 2 blocked
 	}
 
@@ -426,11 +430,11 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 		workflow.reduceCategoryCapacity(eventId, "VIP", 1); // A2, A3, A4 blocked (highest ids first)
 
 		assertThrows(SeatNoLongerAvailableException.class,
-				() -> workflow.holdSeats(buyer.getUserId(), eventId, seats(4)));
-		assertEquals(SeatStatus.AVAILABLE, event(eventId).findEventSeat(1).getStatus());
+				() -> workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 4)));
+		assertEquals(SeatStatus.AVAILABLE, seat(eventId, 1).getStatus());
 		assertEquals(8, event(eventId).getEventSeats().stream()
 				.filter(s -> s.getTicketType().getName().equals("STANDARD") && s.getStatus() == SeatStatus.AVAILABLE).count());
-		workflow.holdSeats(buyer.getUserId(), eventId, seats(5)); // a STANDARD seat is still sellable
+		workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 5)); // a STANDARD seat is still sellable
 	}
 
 	@Test
@@ -447,23 +451,24 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 
 	/** Simulates that the 10 minutes of the hold have passed, without waiting. */
 	private void expireHoldTimeOf(Integer holdId) {
-		seatHoldRepository.getById(holdId).setExpiresAt(LocalDateTime.now().minusMinutes(1));
+		transactionManager.runInTransaction(() ->
+				seatHoldRepository.getByIdOrNull(holdId).setExpiresAt(LocalDateTime.now().minusMinutes(1)));
 	}
 
 	@Test
 	public void paymentIsRejectedBeforeChargingWhenTheHoldHasExpired() {
 		Integer eventId = newPublishedEvent(1, 4);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
-		Integer holdId = workflow.holdSeats(buyer.getUserId(), eventId, seats(1));
+		Integer holdId = workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 1));
 		Integer orderId = workflow.createOrder(holdId);
 		expireHoldTimeOf(holdId); // the buyer was too slow
 
 		PaymentRejectedException ex = assertThrows(PaymentRejectedException.class, () -> workflow.startPayment(orderId));
 
 		assertTrue(ex.getMessage().contains("PAYMENT_REJECTED"));
-		assertEquals(OrderStatus.EXPIRED, orderRepository.getById(orderId).getStatus());
-		assertEquals(HoldStatus.EXPIRED, seatHoldRepository.getById(holdId).getStatus());
-		assertEquals(SeatStatus.AVAILABLE, event(eventId).findEventSeat(1).getStatus());
+		assertEquals(OrderStatus.EXPIRED, orderRepository.getByIdOrNull(orderId).getStatus());
+		assertEquals(HoldStatus.EXPIRED, seatHoldRepository.getByIdOrNull(holdId).getStatus());
+		assertEquals(SeatStatus.AVAILABLE, seat(eventId, 1).getStatus());
 		assertEquals(0, ticketRepository.findByEventId(eventId).size());
 		// asking again after the rejection is rejected as well
 		assertThrows(PaymentRejectedException.class, () -> workflow.startPayment(orderId));
@@ -473,13 +478,13 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 	public void paymentStartedInTimeIsProcessedAndConfirmed() {
 		Integer eventId = newPublishedEvent(1, 4);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
-		Integer orderId = workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seats(1)));
+		Integer orderId = workflow.createOrder(workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 1)));
 
 		workflow.startPayment(orderId);
-		assertEquals(OrderStatus.PAYMENT_PROCESSING, orderRepository.getById(orderId).getStatus());
+		assertEquals(OrderStatus.PAYMENT_PROCESSING, orderRepository.getByIdOrNull(orderId).getStatus());
 
 		assertEquals(1, workflow.confirmPayment(orderId).size());
-		assertEquals(OrderStatus.PAID, orderRepository.getById(orderId).getStatus());
+		assertEquals(OrderStatus.PAID, orderRepository.getByIdOrNull(orderId).getStatus());
 	}
 
 	@Test
@@ -487,16 +492,16 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 		Integer eventId = newPublishedEvent(1, 4);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
 		UserAccount other = newUser(UserRole.PARTICIPANT);
-		Integer holdId = workflow.holdSeats(buyer.getUserId(), eventId, seats(1));
+		Integer holdId = workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 1));
 		Integer orderId = workflow.createOrder(holdId);
 		workflow.startPayment(orderId); // card charging starts in time
 		expireHoldTimeOf(holdId);       // the result arrives a little after the 10 minutes
 
 		workflow.expireHolds(LocalDateTime.now());
 
-		assertEquals(HoldStatus.ACTIVE, seatHoldRepository.getById(holdId).getStatus());
+		assertEquals(HoldStatus.ACTIVE, seatHoldRepository.getByIdOrNull(holdId).getStatus());
 		assertThrows(SeatNoLongerAvailableException.class,
-				() -> workflow.holdSeats(other.getUserId(), eventId, seats(1)));
+				() -> workflow.holdSeats(other.getUserId(), eventId, seats(eventId, 1)));
 		assertEquals(1, workflow.confirmPayment(orderId).size()); // honoured, the buyer paid in time
 	}
 
@@ -504,15 +509,15 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 	public void paymentStuckBeyondTheGracePeriodIsExpired() {
 		Integer eventId = newPublishedEvent(1, 4);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
-		Integer holdId = workflow.holdSeats(buyer.getUserId(), eventId, seats(1));
+		Integer holdId = workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 1));
 		Integer orderId = workflow.createOrder(holdId);
 		workflow.startPayment(orderId);
 
 		workflow.expireHolds(LocalDateTime.now().plusMinutes(10 + EventTicketingBusinessWorkflowServiceImpl.PAYMENT_GRACE_MINUTES + 1));
 
-		assertEquals(HoldStatus.EXPIRED, seatHoldRepository.getById(holdId).getStatus());
-		assertEquals(OrderStatus.EXPIRED, orderRepository.getById(orderId).getStatus());
-		assertEquals(SeatStatus.AVAILABLE, event(eventId).findEventSeat(1).getStatus());
+		assertEquals(HoldStatus.EXPIRED, seatHoldRepository.getByIdOrNull(holdId).getStatus());
+		assertEquals(OrderStatus.EXPIRED, orderRepository.getByIdOrNull(orderId).getStatus());
+		assertEquals(SeatStatus.AVAILABLE, seat(eventId, 1).getStatus());
 		// a result that arrives this late issues no ticket (the payment layer has to refund it)
 		assertThrows(BusinessRuleViolationException.class, () -> workflow.confirmPayment(orderId));
 		assertEquals(0, ticketRepository.findByEventId(eventId).size());
@@ -522,15 +527,15 @@ public class Test4_BusinessWorkflowServiceTest extends AbstractDomainTest {
 	public void paymentCannotBeStartedTwiceAndAFailedStartedPaymentReleasesSeats() {
 		Integer eventId = newPublishedEvent(1, 4);
 		UserAccount buyer = newUser(UserRole.PARTICIPANT);
-		Integer holdId = workflow.holdSeats(buyer.getUserId(), eventId, seats(1));
+		Integer holdId = workflow.holdSeats(buyer.getUserId(), eventId, seats(eventId, 1));
 		Integer orderId = workflow.createOrder(holdId);
 		workflow.startPayment(orderId);
 
 		assertThrows(BusinessRuleViolationException.class, () -> workflow.startPayment(orderId));
 
 		workflow.failPayment(orderId); // the card was declined
-		assertEquals(OrderStatus.FAILED, orderRepository.getById(orderId).getStatus());
-		assertEquals(HoldStatus.CANCELLED, seatHoldRepository.getById(holdId).getStatus());
-		assertEquals(SeatStatus.AVAILABLE, event(eventId).findEventSeat(1).getStatus());
+		assertEquals(OrderStatus.FAILED, orderRepository.getByIdOrNull(orderId).getStatus());
+		assertEquals(HoldStatus.CANCELLED, seatHoldRepository.getByIdOrNull(holdId).getStatus());
+		assertEquals(SeatStatus.AVAILABLE, seat(eventId, 1).getStatus());
 	}
 }

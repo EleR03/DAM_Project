@@ -1,11 +1,12 @@
-# Elide Events – Backend (Sprint 2: Domain Model + Business Logic)
+# Elide Events – Backend (Sprint 3: Spring Data JPA / PostgreSQL)
 
 Stack: **Java 17 + Spring Boot 2.7 + (PostgreSQL + React în sprinturile următoare)**.
-Sprint 2 = domain model, servicii de domeniu și teste. **Fără persistență** (repository-uri in-memory) și **fără frontend**.
+Sprint 3 = persistență cu **Spring Data JPA**: interfețe care extind `JpaRepository<Entity, Integer>`, conexiune configurată în `application.properties`, servicii de workflow tranzacționale.
 
 ## Rulare
 ```bash
-mvn test          # rulează toate testurile JUnit 5
+# 1) creează baza de date eliade_event în pgAdmin (src/test/resources/ScriptsDB.sql), user postgres/postgres
+mvn test          # rulează toate testurile JUnit 5 pe PostgreSQL
 ```
 
 ## Maparea pe template-ul de curs (msd.t2_c4.spring_domain)
@@ -17,7 +18,7 @@ mvn test          # rulează toate testurile JUnit 5
 | `Sprint` + `Task`                                  | `SeatHold` + `SeatHoldItem`; `Order` + `OrderItem`; `Ticket` |
 | Value objects (enum-uri)                           | `EventStatus`, `SeatStatus`, `HoldStatus`, `OrderStatus`, `TicketStatus`, `TicketScanResult`, `UserRole`, `AccountStatus` |
 | `ProjectEntityFactoryBase`                         | `EventEntityFactoryBase` (+ `IEventEntityFactory`)        |
-| `ProjectEntityRepositoryBase`                      | `*RepositoryBase` (in-memory, `IEntityRepository<T>`)     |
+| `ProjectEntityRepositoryBase`                      | `I*Repository extends IEntityRepository<T>` → `JpaRepository<T,Integer>` (Spring Data generează implementarea) |
 | `ValidatingProjectDomainService`                   | `ValidatingEventDomainServiceImpl`                        |
 | `SummarizingProjectDomainService`                  | `SummarizingEventDomainServiceImpl` (câmpuri calculate)   |
 | `ConsolidatingProjectCurrentReleaseView...`        | `ConsolidatingEventSalesViewDomainServiceImpl` (`EventSalesView`) |
@@ -54,7 +55,22 @@ mvn test          # rulează toate testurile JUnit 5
   Nu se anulează un eveniment COMPLETED sau care s-a terminat deja.
 - `deleteEvent` (ștergere de date): permis doar dacă **nu există bilete vândute** (altfel se pierde evidența financiară); rezervările active sunt eliberate.
 
+## Persistență (Sprint 3)
+- `application.properties`: `spring.datasource.url=jdbc:postgresql://localhost:5432/eliade_event`, `postgres/postgres`, pool HikariCP,
+  `spring.jpa.hibernate.ddl-auto=update`. Suprascriere fără editare: `-Dspring.datasource.url=... -Dspring.datasource.username=... -Dspring.datasource.password=...`.
+- Repository-uri: `IEntityRepository<T> extends JpaRepository<T,Integer>` (`@NoRepositoryBean`) + metode `default` (`getByIdOrNull`, `add`, `update`, `remove`, `size`, `toCollection`);
+  interogări derivate din nume (`findByStatus`, `findByVenueCity`, ...), `@Query` + `@Param` (`findByTitleContaining`, numărări, id-uri scalare),
+  `@Lock(PESSIMISTIC_WRITE)` (`UserAccount`, `Ticket.findByQrTokenForUpdate`) și `Event.getByIdForUpdate` (query nativ `select ... for update`).
+- Entități: `@Entity`, `@Enumerated`, agregate cu `@OneToMany(mappedBy, EAGER, cascade=ALL, orphanRemoval)`; id-uri generate de bază
+  (nu mai sunt locale agregatului). `Order` are numele JPQL `SalesOrder` (tabela `orders`).
+- Listeners: `OrderComputationListener` (total calculat la insert/update), `DomainAuditListener` (audit ADDED/UPDATED/DELETED).
+- `ITransactionManager`/`SpringTransactionManager`: `TransactionTemplate` peste `JpaTransactionManager` (configurat de Spring Boot); repository-urile Spring Data
+  participă la aceeași tranzacție; pașii de workflow se alătură tranzacției apelantului (REQUIRED).
+- Fiecare pas de workflow = o tranzacție. `holdSeats`, `createOrder`, `confirmPayment`, `cancelEvent` blochează rândul `Event`
+  (`SELECT ... FOR UPDATE`), deci niciun loc nu e blocat/vândut de două ori; `validateTicket` blochează rândul biletului
+  (un singur VALID chiar dacă 20 de porți scanează simultan). `createOrder` verifică că locurile din hold sunt încă HELD de acel hold.
+  Cazurile „refuz dar păstrăm efectul” (hold expirat la `startPayment`/`createOrder`/`confirmPayment`) fac commit, apoi aruncă excepția.
+- Teste noi: `Test8_JpaRepositoriesTest`, `Test9_TransactionIntegrityTest`; Test1–7 adaptate (locurile se adresează prin poziție, nu prin id fix).
+
 ## Ce rămâne pentru sprinturile următoare
-- Persistență PostgreSQL (în `pom.xml` sunt dependențele comentate; entitățile au deja anotări JPA, `Order` → tabela `orders`).
-  Blocarea locurilor va deveni tranzacție + row locking; acum e un `synchronized` în workflow.
 - Controllere REST, RBAC pe server, Stripe + webhook, Redis, React.

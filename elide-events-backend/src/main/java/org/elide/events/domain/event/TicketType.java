@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.ManyToOne;
 import javax.validation.constraints.DecimalMin;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
@@ -25,6 +26,10 @@ public class TicketType implements Serializable {
 	@DecimalMin(value = "0.00", message = "Ticket type price must not be negative!")
 	private BigDecimal price;
 
+	// back-reference to the aggregate root (owning side of the Event.ticketTypes relationship)
+	@ManyToOne
+	private Event event;
+
 	public TicketType() {
 		super();
 	}
@@ -36,6 +41,8 @@ public class TicketType implements Serializable {
 		this.price = price;
 	}
 
+	public Event getEvent() { return event; }
+	public void setEvent(Event event) { this.event = event; }
 	public Integer getTicketTypeId() { return ticketTypeId; }
 	public void setTicketTypeId(Integer ticketTypeId) { this.ticketTypeId = ticketTypeId; }
 	public String getName() { return name; }

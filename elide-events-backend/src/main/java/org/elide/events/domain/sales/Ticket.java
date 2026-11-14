@@ -3,14 +3,22 @@ package org.elide.events.domain.sales;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
+import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.EntityListeners;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.Index;
+import javax.persistence.Table;
+
+import org.elide.events.domain.audit.DomainAuditListener;
 
 /** Entity: issued ticket. The QR token is a random secret, validated only by the backend. */
 @Entity
+@Table(indexes = { @Index(name = "idx_ticket_event", columnList = "eventId") })
+@EntityListeners(DomainAuditListener.class)
 public class Ticket implements Serializable {
 	private static final long serialVersionUID = 1L;
 
@@ -23,6 +31,9 @@ public class Ticket implements Serializable {
 	private String seatLabel;
 	private String ticketTypeName;
 	private String ticketCode;
+
+	// the scanner looks the ticket up by this secret: unique + indexed by the unique constraint
+	@Column(unique = true)
 	private String qrToken;
 
 	@Enumerated(EnumType.STRING)

@@ -5,6 +5,7 @@ import java.io.Serializable;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.ManyToOne;
 
 /** Component entity of the Hall aggregate: a physical seat (identity is local to the hall). */
 @Entity
@@ -17,6 +18,10 @@ public class Seat implements Serializable {
 	private int seatNumber;    // 1, 2, 3 ...
 	private boolean accessible = false;
 	private boolean active = true;
+
+	// back-reference to the aggregate root (owning side of the Hall.seats relationship)
+	@ManyToOne
+	private Hall hall;
 
 	public Seat() {
 		super();
@@ -34,6 +39,8 @@ public class Seat implements Serializable {
 		return rowLabel + seatNumber;
 	}
 
+	public Hall getHall() { return hall; }
+	public void setHall(Hall hall) { this.hall = hall; }
 	public Integer getSeatId() { return seatId; }
 	public void setSeatId(Integer seatId) { this.seatId = seatId; }
 	public String getRowLabel() { return rowLabel; }
